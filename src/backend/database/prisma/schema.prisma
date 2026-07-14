@@ -1,0 +1,209 @@
+// Playschool ERP — Prisma schema
+// Foundation (auth, branches, classrooms, students, guardianship) + CCTV module.
+// Kept in sync with src/shared/constants/roles.ts.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  PARENT
+}
+
+enum GuardianRelation {
+  MOTHER
+  FATHER
+  GUARDIAN
+  OTHER
+}
+
+enum CctvLogAction {
+  AUTHORIZE_GRANTED
+  AUTHORIZE_DENIED
+  TOKEN_ISSUED
+  VIEW_START
+}
+
+// ---------------------------------------------------------------------------
+// Foundation
+// ---------------------------------------------------------------------------
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  address   String?
+  // IANA tz (e.g. "Asia/Kolkata") — school-hours gating is evaluated in this zone
+  timezone  String   @default("Asia/Kolkata")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  classrooms  Classroom[]
+  students    Student[]
+  cameras     Camera[]
+  schoolHours SchoolHours[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role     @default(PARENT)
+  active       Boolean  @default(true)
+  branchId     String?
+  branch       Branch?  @relation(fields: [branchId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  guardianships Guardianship[]
+  accessGrants  CameraAccessGrant[]
+  cctvLogs      CctvViewLog[]
+
+  @@index([role])
+  @@index([branchId])
+}
+
+model Classroom {
+  id        String   @id @default(cuid())
+  name      String
+  ageGroup  String?
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students Student[]
+  cameras  Camera[]
+
+  @@index([branchId])
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  dob         DateTime?
+  active      Boolean  @default(true)
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  classroomId String?
+  classroom   Classroom? @relation(fields: [classroomId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guardianships Guardianship[]
+
+  @@index([branchId])
+  @@index([classroomId])
+}
+
+// Parent (User) <-> Student link. A parent may have many children; a child
+// may have many guardians. CCTV access is derived through this relation.
+model Guardianship {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  relation  GuardianRelation @default(GUARDIAN)
+  isPrimary Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, studentId])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// CCTV
+// ---------------------------------------------------------------------------
+
+model Camera {
+  id            String   @id @default(cuid())
+  name          String
+  branchId      String
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  // Camera physically covers this classroom; parents of students in this
+  // classroom get access (subject to the checks below).
+  classroomId   String?
+  classroom     Classroom? @relation(fields: [classroomId], references: [id])
+
+  // MediaMTX path this feed is published at (e.g. "classroom-a"). The browser
+  // opens WHEP against MEDIAMTX_WHEP_URL/<streamPath>/whep.
+  streamPath    String   @unique
+  // Source RTSP URL (may embed credentials). SERVER-SIDE ONLY — never sent to a
+  // browser. MediaMTX pulls from here; parents only ever get a view token.
+  rtspUrl       String
+
+  // Global on/off (admin kill-switch). When false nobody can view.
+  enabled       Boolean  @default(true)
+  // Whether parents (vs. staff only) may view this camera at all.
+  parentViewable Boolean @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accessGrants CameraAccessGrant[]
+  cctvLogs     CctvViewLog[]
+
+  @@index([branchId])
+  @@index([classroomId])
+}
+
+// Explicit per-user grant, on top of (or instead of) classroom-derived access.
+// `allow=false` acts as an explicit revocation for a specific parent.
+model CameraAccessGrant {
+  id        String   @id @default(cuid())
+  cameraId  String
+  camera    Camera   @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allow     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([cameraId, userId])
+  @@index([userId])
+}
+
+// Weekly school-hours window per branch. Live viewing is only permitted inside
+// one of these windows (evaluated in the branch timezone). dayOfWeek: 0=Sun..6=Sat.
+model SchoolHours {
+  id        String @id @default(cuid())
+  branchId  String
+  branch    Branch @relation(fields: [branchId], references: [id])
+  dayOfWeek Int
+  // Minutes from midnight, local branch time (e.g. 8*60 = 480 for 08:00).
+  openMin   Int
+  closeMin  Int
+
+  @@unique([branchId, dayOfWeek])
+  @@index([branchId])
+}
+
+// Immutable audit trail: every authorize decision + view start is logged.
+model CctvViewLog {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  cameraId  String
+  camera    Camera        @relation(fields: [cameraId], references: [id])
+  action    CctvLogAction
+  reason    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime      @default(now())
+
+  @@index([userId])
+  @@index([cameraId])
+  @@index([createdAt])
+}

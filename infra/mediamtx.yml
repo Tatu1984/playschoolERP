@@ -1,0 +1,52 @@
+# MediaMTX config for Climb Kiddo CCTV.
+#
+# Every read (parent watching) and publish (camera/ingest) is authorized by our
+# Next.js app via an external HTTP hook. MediaMTX POSTs the caller's credentials
+# to authHTTPAddress and only permits the action on a 2xx response.
+#
+# Docs: https://github.com/bluenviron/mediamtx
+
+logLevel: info
+
+# Control API (read-only here) — used to verify a path is publishing. Excluded
+# from external auth by default.
+api: yes
+apiAddress: :9997
+
+###############################################
+# Authentication — delegate to the Next.js app
+###############################################
+authMethod: http
+# host.docker.internal resolves to the host running `npm run dev` (see the
+# extra_hosts entry in docker-compose.yml for Linux).
+authHTTPAddress: http://host.docker.internal:3000/api/cctv/authorize
+
+###############################################
+# Protocols
+###############################################
+# RTSP — cameras/NVRs publish here (and MediaMTX can pull from real cameras).
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+# WebRTC (WHEP) — low-latency playback for the parent browser.
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+# ICE-TCP candidate too — more reliable than UDP through a Colima/Docker VM's
+# port-forwarding on localhost.
+webrtcLocalTCPAddress: :8189
+webrtcAdditionalHosts: [127.0.0.1]
+
+# HLS — fallback playback path.
+hls: yes
+hlsAddress: :8888
+hlsVariant: lowLatency
+
+###############################################
+# Paths
+###############################################
+# Accept any path name; each maps 1:1 to a Camera.streamPath in the database.
+# For real cameras, add a per-path `source: rtsp://…` (or manage via the API).
+paths:
+  all_others:

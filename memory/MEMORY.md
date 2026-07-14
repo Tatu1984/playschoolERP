@@ -1,0 +1,1 @@
+- [Avoid third-party API deps](feedback_avoid_third_party_api_deps.md) — default to self-hosted/admin-editable solutions; user declined Google Places API for reviews

@@ -1,0 +1,66 @@
+# Climb Kiddo — local ERP + CCTV infrastructure.
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# Brings up:
+#   • postgres    — the ERP database (matches DATABASE_URL in .env.local)
+#   • mediamtx     — the media server (RTSP in, WHEP/HLS out), auth via our app
+#   • teststream   — an ffmpeg test pattern published to the "classroom-a" path,
+#                    so /parent/cctv shows a live feed with no real hardware.
+#
+# The Next.js app runs on the HOST (`npm run dev`), reachable from these
+# containers at host.docker.internal:3000.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ck_postgres
+    environment:
+      POSTGRES_USER: playschool
+      POSTGRES_PASSWORD: playschool
+      POSTGRES_DB: playschool
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U playschool"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: ck_mediamtx
+    restart: unless-stopped
+    ports:
+      - "8554:8554"       # RTSP
+      - "8889:8889"       # WebRTC / WHEP (browser playback)
+      - "8888:8888"       # HLS fallback
+      - "8189:8189/udp"   # WebRTC ICE (UDP)
+      - "8189:8189/tcp"   # WebRTC ICE (TCP fallback)
+      - "9997:9997"       # MediaMTX control API (verify feed)
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  teststream:
+    image: jrottenberg/ffmpeg:6.1-alpine
+    container_name: ck_teststream
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+    # Publishes a 720p test pattern + tone to the "classroom-a" path. The
+    # publisher credentials must match CCTV_PUBLISHER_USER / CCTV_INTERNAL_SECRET
+    # in your .env.local (defaults shown).
+    command: >
+      -re -f lavfi -i testsrc=size=1280x720:rate=15
+      -f lavfi -i sine=frequency=440:sample_rate=44100
+      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p -g 30
+      -c:a aac
+      -f rtsp
+      rtsp://${CCTV_PUBLISHER_USER:-publisher}:${CCTV_INTERNAL_SECRET:-dev-internal-secret}@mediamtx:8554/classroom-a
+
+volumes:
+  pgdata:
