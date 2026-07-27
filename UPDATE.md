@@ -1,15 +1,17 @@
 # Climb Kiddo — Project Update
 
 **Last updated:** 2026-07-27
-**Repo:** [Tatu1984/playschool](https://github.com/Tatu1984/playschool)
-**Branches:** `main` (production-tracked by Vercel)
+**Repo:** [Tatu1984/playschoolERP](https://github.com/Tatu1984/playschoolERP) — the only repo for this project
+**Branches:** `main` (Vercel deploys from it)
+**Database:** Neon Postgres (`ep-autumn-sound-ayzx522r`), schema pushed + seeded 2026-07-27
 **Working dir:** `/Users/sudipto/Desktop/projects/playschool` · **Backup snapshot:** `/Users/sudipto/Desktop/projects/climbkiddo`
 
 ---
 
 ## ▶ RESUME HERE — after a system restart
 
-Nothing is committed to git yet (all new work is in the working tree). After a reboot,
+Everything is committed and pushed to `main` on
+[playschoolERP](https://github.com/Tatu1984/playschoolERP). After a reboot,
 **Postgres auto-restarts** (Homebrew launchd) but **Colima + the CCTV containers do NOT** — bring them back with:
 
 ```bash
@@ -282,8 +284,24 @@ The home and admissions enquiry forms now write real leads into the admissions p
 - `docs/sow/sow.md` and `docs/sow/sow.docx` — Master Scope of Work
 
 ### Env vars required on Vercel
-- `BLOB_READ_WRITE_TOKEN` — Vercel Blob (connected ✅)
-- `ADMIN_PASSWORD` — GMS sign-in password (pending — needs to be set in Vercel env vars)
+Set for Production + Preview + Development. `src/config/env.ts` **throws on boot in
+production** if any of the three secrets is missing, so all three are mandatory even
+before CCTV video is wired up.
+
+| Name | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | yes | Neon **pooled** connection string (`...-pooler...`) |
+| `AUTH_SECRET` | yes | `openssl rand -hex 32` — signs the session JWT |
+| `CCTV_TOKEN_SECRET` | yes | separate secret for 60s camera view tokens |
+| `CCTV_INTERNAL_SECRET` | yes | MediaMTX publisher credential |
+| `ADMIN_PASSWORD` | for `/gms` | password gate for the legacy gallery admin |
+| `BLOB_READ_WRITE_TOKEN` | for `/gallery` | Vercel Blob |
+| `MEDIAMTX_WHEP_URL` / `MEDIAMTX_HLS_URL` | only with a public MediaMTX | leave unset and the parent camera page shows a friendly empty state |
+| `CCTV_AUTHORIZE_SECRET` | optional | locks the authorize hook to MediaMTX only |
+| `CCTV_PUBLISHER_USER` | optional | defaults to `publisher` |
+
+Migrations against Neon: use the **direct** host (drop `-pooler`) for
+`prisma db push` / `migrate`, and the pooled host for the app at runtime.
 
 ---
 
