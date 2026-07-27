@@ -1,6 +1,6 @@
 # Climb Kiddo — Project Update
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-27
 **Repo:** [Tatu1984/playschool](https://github.com/Tatu1984/playschool)
 **Branches:** `main` (production-tracked by Vercel)
 **Working dir:** `/Users/sudipto/Desktop/projects/playschool` · **Backup snapshot:** `/Users/sudipto/Desktop/projects/climbkiddo`
@@ -33,9 +33,22 @@ npm run dev                                    # http://localhost:3000
 curl -s http://localhost:9997/v3/paths/list | grep -o '"ready":true'   # -> classroom-a is live
 ```
 
-**Demo logins** (password `password12345`): admin `admin@climbkiddo.in` → `/admin` · parent `parent@example.com` → `/parent` → **/parent/cctv** → *Watch live*.
+**Demo logins** (password `password12345`):
+
+| Role | Email | Lands on | Also reachable |
+|---|---|---|---|
+| Admin | `admin@climbkiddo.in` | `/admin` | `/teacher` (preview), `/kids` |
+| Teacher | `teacher@climbkiddo.in` | `/teacher` | `/kids` |
+| Parent | `parent@example.com` | `/parent` | `/parent/cctv`, `/kids` |
 
 If demo data is ever wiped: `npm run db:push && npm run db:seed`.
+
+**Two data planes right now** — worth knowing before you demo anything:
+
+- **Postgres (real):** auth/session, RBAC, branches, classrooms, students, guardianship, and the whole CCTV module (cameras, tokens, school hours, view log).
+- **In-browser demo store (`src/frontend/store/erpStore.ts`):** every other ERP module. Seeded from `src/shared/fixtures/**`, persisted to `localStorage`, and mutated by the UI for real — enrol a student, collect a fee, publish a notice, RSVP, earn a star, and it sticks across navigation and reload. Reset it from **Admin → Settings → Demo data** or **Parent → Settings → Privacy**.
+
+That store is the single seam the backend phase replaces; see *Backend phase — the plan* below.
 
 ### Current running state (as of this session)
 - ✅ Homebrew **Postgres 14** running; `playschool` DB with schema + seed data.
@@ -81,31 +94,130 @@ Full architecture: [`docs/erp-cctv.md`](docs/erp-cctv.md).
 
 ---
 
+## 🧱 Backend phase — the plan
+
+Every screen already talks to a typed action; nothing in the UI knows where data
+comes from. Converting a module is therefore mechanical:
+
+1. **Schema** — extend `src/backend/database/prisma/schema.prisma` with the models
+   already typed in `src/shared/types/**` (they were written to map 1:1).
+2. **Repository** — `src/backend/repositories/<domain>.repository.ts` (Prisma only).
+3. **Service** — `src/backend/services/<domain>.service.ts`: business rules + RBAC
+   via `requirePermission`, mirroring the rules currently living in store actions
+   (e.g. `payInvoice` capping at the invoice total, notice audience filtering).
+4. **Validator** — `src/backend/validators/<domain>.validator.ts` (Zod).
+5. **Route adapter** — `src/app/api/<resource>/route.ts`, thin, delegating to the service.
+6. **Swap the seam** — replace the matching action in `erpStore.ts` with a `fetch`
+   (or move that domain to a TanStack Query hook in `src/frontend/api/endpoints/`).
+   **No component changes**: pages only ever call actions and the pure selectors in
+   `src/frontend/store/queries.ts`.
+7. **Seed** — `src/backend/database/seed.ts` can import the same
+   `src/shared/fixtures/**` the UI uses, so the demo school survives the move.
+
+Recommended order (each is independently demoable): Students/Staff → Attendance →
+Activity feed → Notices → Fees (Razorpay + webhook) → Messaging → Progress reports →
+Admissions → Events → CMS → Analytics → Kids-zone progress.
+
+`npm run check:flows` exercises the business rules those services must reproduce —
+59 assertions covering enrolment, attendance, publishing, payments, messaging,
+admissions, RSVP, kids-zone rewards, settings and reset.
+
+---
+
 ## 🔜 Future work / next steps (in priority order)
 
-1. **Confirm CCTV video in the browser** at `/parent/cctv`; if WebRTC struggles through Colima,
+1. **Walk the UI in a real browser.** Every route was swept server-side (all 200/307 as
+   expected) and all 59 store-flow assertions pass, but nobody has clicked through the
+   dialogs, drag-and-drop kanban, canvas games or audio pads on a real device yet.
+   Phones especially: the parent tab bar and kids-zone touch targets.
+2. **Convert modules to the real backend**, in the order under *Backend phase* above.
+   Students + Staff first: they unlock real parent↔camera mapping without seeding.
+3. **Confirm CCTV video in the browser** at `/parent/cctv`; if WebRTC struggles through Colima,
    add an **HLS fallback** to `LiveCameraPlayer` (hls.js) — most robust cross-browser path.
-2. **Students module** (`/admin/students`): enroll/list/edit, assign to classroom, link guardians.
-   Unlocks real parent↔camera mapping without seeding, plus attendance/admissions later.
-3. **Staff module** (`/admin/staff`): create teachers/admins, assign branch.
 4. **CCTV admin polish:** per-parent access grants/revocations UI (`CameraAccessGrant` exists in
    schema, no UI yet); edit/delete camera; school-hours editor per branch.
-5. **Parent portal polish** to match the admin SaaS quality (dashboard is currently basic).
-6. **Proper migrations:** switch from `prisma db push` to `prisma migrate dev` before any real data.
-7. **Then the SOW ERP modules** in order: Attendance (QR pickup) → Activity Feed → Notices →
-   Fees (Razorpay) → Messaging → Progress reports → Admissions → Analytics/CMS → Kids zone.
-8. **Ops:** `git` commit on a feature branch; CI (typecheck+lint); Neon DB for staging/prod;
-   deploy MediaMTX; swap NextAuth decision doc if ever needed.
+5. **Proper migrations:** switch from `prisma db push` to `prisma migrate dev` before any real data.
+6. **Real media pipeline** for the activity feed and gallery (R2/Blob + Sharp thumbnails).
+   The composer already attaches files and models them as `MediaRef`; only the upload is faked.
+7. **Ops:** `git` commit on a feature branch; CI (typecheck + lint + `check:flows`);
+   Neon DB for staging/prod; deploy MediaMTX; sitemap.xml + robots.txt; Lighthouse pass.
+8. **Mobile app** (Expo) — the parent portal's information architecture and the `PARENT_TABS`
+   config were built to be ported screen-for-screen.
 
 ### Known deviations from SOW (intentional, documented)
 - **Auth:** custom JWT (jose) + bcrypt in an HttpOnly cookie, not NextAuth (robust on Next 16).
 - **Route handlers:** physically in `src/app/api/**` as thin adapters delegating to
   `src/backend/services` (Next.js only serves handlers under `app/`); rest of the mandated tree honored.
 - **Local infra:** Homebrew Postgres (not the compose Postgres) since Docker wasn't preinstalled.
+- **Data layer for non-CCTV modules:** the persisted client store described above, until each
+  module gets its service. TanStack Query + Axios are *not* installed yet — they land with the
+  first converted endpoint, behind `src/frontend/api/`.
+- **Charts:** hand-rolled SVG in `src/frontend/components/ui/Charts.tsx` instead of a chart
+  library — bar/line/donut/radial/skill-bars is all §7.16 needs, and it keeps the bundle small.
+- **Kids-zone audio:** Web Audio oscillators + `speechSynthesis` for narration rather than
+  recorded assets, so there is nothing to license or ship until real voice work is commissioned.
+- **Portal pages are client-rendered** behind `StoreGate` (skeleton → content). The demo store
+  lives in `localStorage` and its fixtures use relative dates, so a server pre-render would
+  always disagree with the client. Marketing pages stay server-rendered for SEO.
 
 ---
 
 ## ✅ Done
+
+### Full UI/UX build-out — every SoW surface, end to end (2026-07-27)
+
+**90 routes build green.** TypeScript, ESLint and `next build` all clean; every route swept
+per role (admin / teacher / parent / anonymous) with the expected 200 / 307; 59 store-flow
+assertions pass via `npm run check:flows`.
+
+**Foundation**
+- `src/shared/types/**` — every SoW §11 entity typed (school, engagement, learning, ops),
+  ISO-string dates so records survive JSON both to `localStorage` today and over HTTP later.
+- `src/shared/fixtures/**` — a whole demo school: 2 branches, 6 classrooms, 10 staff,
+  24 students + guardians, 21 school days of attendance, feed, notices, threads, invoices,
+  events, 12 enquiries, 6 applications, reports, milestones, CMS, blog, analytics.
+  Deterministic (seeded PRNG, no `Math.random` at module scope) and importable by `seed.ts`.
+- `src/frontend/store/erpStore.ts` — persisted Zustand store: generic CRUD plus ~30 domain
+  actions carrying the real rules (payment capping, unread counters, badge thresholds,
+  audience filtering). `queries.ts` holds pure selectors so components never re-derive.
+- `src/frontend/components/ui/**` — the kit that made 50 pages tractable: `DataTable`
+  (search / filter / sort / paginate / bulk-select / ⋯ row menus / CSV export), `FormDialog`,
+  `ConfirmDialog`, `DetailDialog`, field set, `KpiCard`, `StatusBadge`, `Charts` (SVG),
+  `Timeline`, `Stepper`, `EmptyState`.
+- `PortalShell` — one shell for all three portals: sidebar + mobile drawer + topbar with a
+  live notification bell and account menu, branch/class/child switchers, parent tab bar.
+
+**Admin (SoW §8.6) — 16 pages**
+Overview (real CCTV stats + store KPIs, DB-outage tolerant) · Students · Staff · Branches &
+classrooms · Admissions (drag-and-drop kanban + applications + visits) · Fees (invoices,
+collections, structures, trend) · Notices · Events · CMS pages & banners · Blog · Media
+library (drag-drop upload) · Analytics (5 tabs) · Roles & permission matrix · Settings
+(feature flags, seasonal theme, demo reset) · Audit log (admin + CCTV tabs) · Cameras.
+
+**Teacher (§8.5) — 8 pages**
+Dashboard with tap-to-check-in · Classes · Class detail · Attendance marker (bulk, day log
+with mood/meals/nap, pickup codes) · Activity composer (media, student tagging, drafts,
+internal notes) · Lesson planner (week grid + curriculum reference) · Messages (+ meetings) ·
+Progress reports (skill sliders, publish, milestones).
+
+**Parent (§8.3) — 13 pages**
+Dashboard · Daily feed (hearts, comments, lightbox) · Attendance (4-week grid, day report,
+pickup authorisation) · Notices · Messages (voice notes, meeting requests) · Fees (mock
+Razorpay checkout → receipt) · Progress · Events + RSVP · Emergency & medical · Profile ·
+Settings · Live cameras (restyled, DB-outage tolerant).
+
+**Kids zone (§8.4) — 11 routes, 11 playable games**
+Home with mascot picker · journey map with star-gated worlds · age-tiered catalogue ·
+Balloon Pop · Shape Drop · Colour Sort · Animal Sounds · Counting · Patterns · Memory Match ·
+Letter Tracing (canvas) · Word Builder · Math Adventure · Science Quiz · story player with
+`speechSynthesis` narration · drawing canvas with stamps + saved gallery · Web Audio music
+studio with recording · rewards locker. Stars, badges, streaks and sessions all persist.
+
+**Public site (§8.1) + auth (§8.2)**
+Admissions landing / 4-step application / visit booking with slot grid / seat availability ·
+interactive campus tour with guided mode · events + detail · testimonials · blog + posts ·
+careers with apply dialog · privacy · terms · branded 404 · forgot-password · OTP verification.
+The home and admissions enquiry forms now write real leads into the admissions pipeline.
 
 ### Admin dashboard UI/UX — clean SaaS shell (2026-07-07)
 - **Reusable admin shell:** fixed sidebar (desktop) + mobile drawer (Sheet) + sticky topbar with user chip & sign-out. Slate/white professional theme, brand-red active state. Nav config in `src/shared/constants/routes.ts` (`AdminSidebar`, `MobileSidebar`).
@@ -196,7 +308,7 @@ Full architecture: [`docs/erp-cctv.md`](docs/erp-cctv.md).
 - Careers page copy and openings (if any)
 - Real annual day / event photos for Events section (when built)
 
-### Public site polish
+### Public site polish — most items shipped 2026-07-27
 - Embed Google Maps for both branches in `/contact`
 - Social links wired (Instagram, Facebook, YouTube — currently `#` placeholders in footer)
 - Blog section (`/blog`) — listing + post pages
@@ -208,7 +320,7 @@ Full architecture: [`docs/erp-cctv.md`](docs/erp-cctv.md).
 - Sitemap.xml + robots.txt
 - Lighthouse pass (target: LCP < 2.5s, accessibility 95+)
 
-### Parent-facing features (per SoW, not yet built)
+### Parent-facing features — UI built 2026-07-27, backend pending
 - **Auth system for parents** (email/password, JWT, NextAuth)
 - **Parent dashboard** — child overview, attendance, meals, naps, mood, growth
 - **Daily activity feed** — teacher uploads + parent timeline
@@ -219,14 +331,14 @@ Full architecture: [`docs/erp-cctv.md`](docs/erp-cctv.md).
 - **Progress reports** — milestone tracking, printable PDFs
 - **Emergency & safety** — emergency contact, medical/allergy info, broadcasts
 
-### Teacher-facing features
+### Teacher-facing features — UI built 2026-07-27, backend pending
 - Teacher dashboard
 - Class roster + attendance marker
 - Activity uploads (will eventually share to parent feed)
 - Lesson planning
 - Per-student reports
 
-### Admin-facing features (beyond GMS)
+### Admin-facing features — UI built 2026-07-27, backend pending
 - Branch management (multi-branch admin)
 - Students database (enroll, transfer, archive)
 - Staff database
@@ -236,7 +348,7 @@ Full architecture: [`docs/erp-cctv.md`](docs/erp-cctv.md).
 - Analytics (attendance, fees, engagement, retention)
 - Audit log
 
-### Child Learning Zone (later phase)
+### Child Learning Zone — built 2026-07-27 (progress stored client-side)
 - Kids landing with mascot picker
 - Adventure-map journey progression
 - Age-segmented games (2–3, 3–4, 4–5, 5–6)

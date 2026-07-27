@@ -69,6 +69,19 @@ async function main() {
     },
   });
 
+  // Teacher login so the /teacher panel is reachable in the demo.
+  await prisma.user.upsert({
+    where: { email: "teacher@climbkiddo.in" },
+    update: {},
+    create: {
+      email: "teacher@climbkiddo.in",
+      passwordHash,
+      name: "Meera Banerjee",
+      role: "TEACHER",
+      branchId: branch.id,
+    },
+  });
+
   const student = await prisma.student.upsert({
     where: { id: "seed-student-aarav" },
     update: {},
@@ -110,6 +123,7 @@ async function main() {
 
   console.log("✅ Seed complete");
   console.log("   Admin  : admin@climbkiddo.in / password12345");
+  console.log("   Teacher: teacher@climbkiddo.in / password12345");
   console.log("   Parent : parent@example.com / password12345");
   console.log(`   Branch : ${branch.name} (${admin.branchId})`);
 }

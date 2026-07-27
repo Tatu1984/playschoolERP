@@ -27,9 +27,27 @@ const NAV: NavItem[] = [
       { label: "Teachers Training", href: "/teachers-training" },
     ],
   },
+  {
+    label: "Admissions",
+    children: [
+      { label: "How it works", href: "/admissions" },
+      { label: "Apply online", href: "/admissions/apply" },
+      { label: "Book a visit", href: "/admissions/visit" },
+      { label: "Seat availability", href: "/admissions/seats" },
+    ],
+  },
+  {
+    label: "Explore",
+    children: [
+      { label: "Campus tour", href: "/campus-tour" },
+      { label: "Events", href: "/events" },
+      { label: "Gallery", href: "/gallery" },
+      { label: "Testimonials", href: "/testimonials" },
+      { label: "Blog", href: "/blog" },
+    ],
+  },
   { label: "Why Us", href: "/why-us" },
   { label: "Parents", href: "/parents" },
-  { label: "Gallery", href: "/gallery" },
   { label: "Contact Us", href: "/contact" },
 ];
 
@@ -201,7 +219,7 @@ export function Navbar() {
               asChild
               className="rounded-full bg-ck-red hover:bg-ck-red/90 font-bold px-6 shadow-[0_6px_0_#9a1a28] hover:shadow-[0_3px_0_#9a1a28] hover:translate-y-[3px] transition-all"
             >
-              <Link href="/contact">Book a Visit</Link>
+              <Link href="/admissions/visit">Book a Visit</Link>
             </Button>
           </Magnet>
 
@@ -243,7 +261,7 @@ export function Navbar() {
                   asChild
                   className="w-full rounded-full bg-ck-red hover:bg-ck-red/90"
                 >
-                  <Link href="/contact">Book a Visit</Link>
+                  <Link href="/admissions/visit">Book a Visit</Link>
                 </Button>
               </div>
             </SheetContent>

@@ -10,7 +10,7 @@ import { Aurora } from "@/components/reactbits/Aurora";
 import {
   Palette, Music, Bike, Dumbbell, Drama, Sparkles, Trees,
   ChefHat, Drum, Wand2, Brush, Puzzle, Award, BadgeCheck, Music2,
-  Shield, Activity, Hand,
+  Shield, Activity,
 } from "lucide-react";
 
 export const metadata: Metadata = {

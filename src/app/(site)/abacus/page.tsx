@@ -7,7 +7,7 @@ import { AnimatedList, AnimatedItem } from "@/components/reactbits/AnimatedList"
 import { TiltedCard } from "@/components/reactbits/TiltedCard";
 import { GradientText } from "@/components/reactbits/GradientText";
 import { Counter } from "@/components/reactbits/Counter";
-import { Brain, Calculator, Zap, Eye, Sparkles, Trophy } from "lucide-react";
+import { Brain, Zap, Eye, Sparkles, Trophy } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Abacus for Kids · Climb Kiddo",
@@ -106,7 +106,7 @@ export default function AbacusPage() {
               <GradientText>one little box of beads</GradientText>
             </h2>
             <p className="mt-4 text-ck-navy/70">
-              The abacus isn't just about arithmetic — it's a daily workout for
+              The abacus isn&apos;t just about arithmetic — it&apos;s a daily workout for
               focus, memory and self-belief.
             </p>
           </div>

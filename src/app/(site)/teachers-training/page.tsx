@@ -166,7 +166,7 @@ export default function TeachersTrainingPage() {
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
             <div>
               <Badge variant="secondary" className="rounded-full bg-ck-cream text-ck-navy font-bold px-4">
-                Who it's for
+                Who it&apos;s for
               </Badge>
               <h2 className="mt-4 font-[family-name:var(--font-fredoka)] text-3xl sm:text-4xl font-bold text-ck-navy">
                 For anyone who loves{" "}
@@ -221,7 +221,7 @@ export default function TeachersTrainingPage() {
                       Placement support
                     </p>
                     <p className="text-sm text-ck-navy/70">
-                      Hiring partners include Climb Kiddo's own classrooms.
+                      Hiring partners include Climb Kiddo&apos;s own classrooms.
                     </p>
                   </div>
                 </div>

@@ -63,10 +63,10 @@ export default function AboutPage() {
               </h2>
               <p className="mt-4 text-ck-navy/75 leading-relaxed">
                 Climb Kiddo started with one question: where can I send my child
-                and feel <em>truly</em> at ease? We couldn't find the answer, so
+                and feel <em>truly</em> at ease? We couldn&apos;t find the answer, so
                 we built it. Sunlit rooms, gentle caregivers, a curriculum
                 shaped by child psychology, and daily updates that keep parents
-                close — even when they're at work.
+                close — even when they&apos;re at work.
               </p>
               <p className="mt-4 text-ck-navy/75 leading-relaxed">
                 Today, Climb Kiddo is home to over 200 children who run in with

@@ -148,7 +148,7 @@ export function Programs({ showHeading = true }: { showHeading?: boolean }) {
                     </p>
                     <p className="mt-4 text-ck-navy/70 leading-relaxed">
                       Our {p.label.toLowerCase()} program is designed around your
-                      child's natural pace of growth — with plenty of laughter,
+                      child&apos;s natural pace of growth — with plenty of laughter,
                       hugs and learning along the way.
                     </p>
                   </div>

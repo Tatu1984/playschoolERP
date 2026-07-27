@@ -26,6 +26,8 @@ const ROLE_GATES: { prefix: string; allow: Role[] }[] = [
   { prefix: "/admin", allow: STAFF_ROLES },
   { prefix: "/teacher", allow: [ROLES.TEACHER, ...STAFF_ROLES] },
   { prefix: "/parent", allow: [ROLES.PARENT, ROLES.SUPER_ADMIN] },
+  // The kids zone is opened by an adult: any signed-in role may enter.
+  { prefix: "/kids", allow: [ROLES.PARENT, ROLES.TEACHER, ...STAFF_ROLES] },
 ];
 
 // Authenticated JSON APIs (any logged-in user; fine-grained checks in handlers).
@@ -96,6 +98,7 @@ export const config = {
     "/admin/:path*",
     "/teacher/:path*",
     "/parent/:path*",
+    "/kids/:path*",
     "/api/cctv/:path*",
   ],
 };

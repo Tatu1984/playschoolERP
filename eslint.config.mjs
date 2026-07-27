@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Prisma-generated client (not hand-written).
     "src/backend/database/generated/**",
+    // Stray "<name> 2.ext" copies left behind by file-sync tools — not routed,
+    // not imported, and byte-identical to the real files next to them.
+    "**/* 2.*",
   ]),
 ]);
 

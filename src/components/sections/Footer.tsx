@@ -85,8 +85,14 @@ export function Footer() {
                 ["Gallery", "/gallery"],
                 ["Why Us", "/why-us"],
                 ["Parents", "/parents"],
-                ["FAQ", "/why-us"],
-                ["Admissions", "/contact"],
+                ["Campus Tour", "/campus-tour"],
+                ["Events", "/events"],
+                ["Testimonials", "/testimonials"],
+                ["Blog", "/blog"],
+                ["Admissions", "/admissions"],
+                ["Book a Visit", "/admissions/visit"],
+                ["Careers", "/careers"],
+                ["Parent Login", "/login"],
                 ["Contact", "/contact"],
               ].map(([label, href]) => (
                 <li key={label}>
@@ -140,9 +146,9 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-4 text-xs text-white/50 sm:flex-row">
           <p>© {new Date().getFullYear()} Climb Kiddo. Made with 💛 for little ones.</p>
           <div className="flex gap-6">
-            <Link href="#" className="hover:text-white">Privacy</Link>
-            <Link href="#" className="hover:text-white">Terms</Link>
-            <Link href="#" className="hover:text-white">Safeguarding</Link>
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+            <Link href="/privacy#children-s-photographs" className="hover:text-white">Safeguarding</Link>
           </div>
         </div>
       </div>
