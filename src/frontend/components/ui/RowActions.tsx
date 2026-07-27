@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,8 +52,10 @@ export function RowActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-48 min-w-44">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        {/* Fragments, not wrapper divs: Base UI's menu is a composite widget and
+            keyboard navigation expects items to be direct children of the popup. */}
         {visible.map((action, i) => (
-          <div key={action.label}>
+          <Fragment key={action.label}>
             {(action.separatorBefore || (action.destructive && i > 0 && !visible[i - 1]?.destructive)) && (
               <DropdownMenuSeparator />
             )}
@@ -65,7 +68,7 @@ export function RowActions({
               {action.icon}
               {action.label}
             </DropdownMenuItem>
-          </div>
+          </Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -53,7 +53,41 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+/**
+ * A plain heading row, NOT Base UI's `Menu.GroupLabel`.
+ *
+ * `Menu.GroupLabel` calls `useMenuGroupRootContext()`, which *throws* unless it
+ * sits inside a `<Menu.Group>` — so using it as a standalone menu heading (the
+ * usual shadcn/Radix pattern) crashes the whole page the moment the menu opens.
+ * A presentational div is what a heading needs; use `DropdownMenuGroupLabel`
+ * inside a `DropdownMenuGroup` when you want the real aria-labelledby wiring.
+ *
+ * Covered by `npm run check:menus`. Re-apply this if you ever re-run
+ * `shadcn add dropdown-menu --overwrite`.
+ */
 function DropdownMenuLabel({
+  className,
+  inset,
+  ...props
+}: React.ComponentProps<"div"> & {
+  inset?: boolean
+}) {
+  return (
+    <div
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      role="presentation"
+      className={cn(
+        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+/** The Base UI group label — only valid inside `<DropdownMenuGroup>`. */
+function DropdownMenuGroupLabel({
   className,
   inset,
   ...props
@@ -62,7 +96,7 @@ function DropdownMenuLabel({
 }) {
   return (
     <MenuPrimitive.GroupLabel
-      data-slot="dropdown-menu-label"
+      data-slot="dropdown-menu-group-label"
       data-inset={inset}
       className={cn(
         "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
@@ -255,6 +289,7 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
