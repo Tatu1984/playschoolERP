@@ -1,6 +1,12 @@
-import { redirect } from "next/navigation";
+import { StoreGate } from "@/frontend/components/layout/StoreGate";
+import { InvoicesView } from "@/frontend/components/features/parent/InvoicesView";
 
-/** SoW §8.3 lists a dedicated invoices route; the Fees page owns that tab. */
+export const metadata = { title: "Invoices & receipts — Climb Kiddo" };
+
 export default function Page() {
-  redirect("/parent/payments");
+  return (
+    <StoreGate>
+      <InvoicesView />
+    </StoreGate>
+  );
 }

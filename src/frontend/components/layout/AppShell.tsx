@@ -147,6 +147,7 @@ export function AppShell({
         </header>
 
         <main
+          id="main"
           className={cn(
             "mx-auto px-3 py-5 sm:px-5 sm:py-6",
             wide ? "max-w-[1400px]" : "max-w-6xl",

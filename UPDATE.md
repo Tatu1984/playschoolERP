@@ -128,10 +128,11 @@ admissions, RSVP, kids-zone rewards, settings and reset.
 
 ## 🔜 Future work / next steps (in priority order)
 
-1. **Walk the UI in a real browser.** Every route was swept server-side (all 200/307 as
-   expected) and all 59 store-flow assertions pass, but nobody has clicked through the
-   dialogs, drag-and-drop kanban, canvas games or audio pads on a real device yet.
-   Phones especially: the parent tab bar and kids-zone touch targets.
+1. **Walk the UI in a real browser.** All 82 routes were swept against a production
+   build as every role, and the 59 store-flow + 8 overlay assertions pass — but nobody
+   has clicked through the drag-and-drop kanban, canvas games or audio pads on a real
+   device. Phones especially: the parent tab bar and kids-zone touch targets.
+   (The overlay suite exists because exactly this gap shipped a crash once.)
 2. **Convert modules to the real backend**, in the order under *Backend phase* above.
    Students + Staff first: they unlock real parent↔camera mapping without seeding.
 3. **Confirm CCTV video in the browser** at `/parent/cctv`; if WebRTC struggles through Colima,
@@ -165,6 +166,46 @@ admissions, RSVP, kids-zone rewards, settings and reset.
 ---
 
 ## ✅ Done
+
+### UI/UX completion pass — the last gaps closed (2026-07-28)
+
+**99 static pages build green.** All 82 routes swept against a production build
+(`next start`) as admin, teacher, parent and anonymous — every one 200, 404 only
+where intended.
+
+- **`/programs/[slug]`** — the one SoW route with no page. Each of the seven
+  programs now has a full page: outcomes, a typical week, milestones, a
+  term-by-term curriculum timeline, fee breakdown, classrooms, the teachers who
+  run it, and cross-links to the rest. The `/programs` index gained a card grid
+  linking into them.
+- **CMS edits now reach the public site.** `/blog`, `/blog/[slug]`, `/events`,
+  `/events/[slug]` and `/testimonials` render server-side from fixtures (so
+  crawlers and first paint get real HTML) and swap to the CMS store on hydration
+  via `useLiveContent`. Editing a post in `/admin/cms/blog` changes `/blog`.
+  Post/event detail pages no longer `notFound()` on the server, so a *newly
+  created* CMS entry resolves client-side instead of 404ing.
+- **`/parent/payments/invoices`** is a real page instead of a redirect: the full
+  billing paper trail with filters, per-child filter, receipt list, invoice
+  dialog and CSV export.
+- **Loading, error and not-found boundaries** for every surface. Portal skeletons
+  match the KPI+rows layout; the site gets a hero skeleton; the kids zone gets
+  kid-appropriate copy ("Oops! That didn't work") with no stack traces, because a
+  child may be looking at it alone. Staff error pages *do* show the message and
+  digest, since hiding it helps nobody.
+- **SEO**: `app/sitemap.ts` (40 URLs incl. every program, post and event) and
+  `app/robots.ts` (disallows `/admin`, `/teacher`, `/parent`, `/kids`, `/gms`,
+  `/api` and the auth routes — children's data must never be indexed).
+  Open Graph + Twitter metadata and a theme colour on the root layout.
+- **Contact**: both campuses embedded via Google's keyless maps endpoint (no API
+  key to leak, lazy-loaded), each with directions and a call button.
+- **Social links** now come from `ACTIVE_SOCIALS` in `shared/constants/site.ts`
+  and render only when configured — no more dead `href="#"`.
+- **Accessibility**: a skip-to-content link (first tab stop) wired to `#main` on
+  every shell, and a global `prefers-reduced-motion` block that neutralises the
+  animation kit, kids-zone bobbing and marquees.
+- **`tsconfig` now excludes `** 2.*`** — the file-sync duplicates had started
+  landing in `.next/types` and the generated Prisma client and were breaking
+  `tsc` through no fault of the source.
 
 ### Full UI/UX build-out — every SoW surface, end to end (2026-07-27)
 

@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    // Stray "<name> 2.ext" copies left behind by file-sync tools. They are not
+    // routed, not imported, and byte-stale — but they do break `tsc` when they
+    // land in generated folders (.next/types, prisma client).
+    "**/* 2.*"
+  ]
 }

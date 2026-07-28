@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   BadgeCheck,
   CreditCard,
   Download,
   Eye,
+  FileText,
   IndianRupee,
   Landmark,
   Loader2,
@@ -92,11 +94,18 @@ export function PaymentsView() {
         description="Invoices, receipts and online payment."
         crumbs={[{ label: "Parent", href: "/parent" }, { label: "Fees" }]}
         actions={
-          next && (
-            <Button onClick={() => startPayment(next)}>
-              <IndianRupee /> Pay {formatMoney(next.amount + next.lateFee - next.paidAmount)}
+          <>
+            <Button variant="outline" asChild>
+              <Link href="/parent/payments/invoices">
+                <FileText /> All invoices
+              </Link>
             </Button>
-          )
+            {next && (
+              <Button onClick={() => startPayment(next)}>
+                <IndianRupee /> Pay {formatMoney(next.amount + next.lateFee - next.paidAmount)}
+              </Button>
+            )}
+          </>
         }
       />
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
+import { ACTIVE_SOCIALS } from "@/shared/constants/site";
 import { Separator } from "@/components/ui/separator";
 import { Phone, Mail, MapPin } from "lucide-react";
 
@@ -27,6 +28,9 @@ function Youtube({ className }: { className?: string }) {
   );
 }
 
+const SOCIAL_ICONS = { instagram: Instagram, facebook: Facebook, youtube: Youtube } as const;
+const SOCIAL_COLORS = { instagram: "#D4318F", facebook: "#2BAEEC", youtube: "#DC2638" } as const;
+
 export function Footer() {
   return (
     <footer className="relative mt-10 bg-ck-navy text-white">
@@ -49,25 +53,28 @@ export function Footer() {
               playschool & activity programs designed around early-years
               milestones.
             </p>
-            <div className="mt-6 flex gap-3">
-              {[
-                { icon: Instagram, href: "#", color: "#D4318F" },
-                { icon: Facebook, href: "#", color: "#2BAEEC" },
-                { icon: Youtube, href: "#", color: "#DC2638" },
-              ].map((s, i) => {
-                const Icon = s.icon;
-                return (
-                  <a
-                    key={i}
-                    href={s.href}
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-transform hover:scale-110"
-                    style={{ backgroundColor: s.color }}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                );
-              })}
-            </div>
+            {/* Only render channels that exist — a dead "#" link is worse than none.
+                Fill in ACTIVE_SOCIALS in shared/constants/site.ts and they appear. */}
+            {ACTIVE_SOCIALS.length > 0 && (
+              <div className="mt-6 flex gap-3">
+                {ACTIVE_SOCIALS.map((social) => {
+                  const Icon = SOCIAL_ICONS[social.icon];
+                  return (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${social.label} — opens in a new tab`}
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-white transition-transform hover:scale-110"
+                      style={{ backgroundColor: SOCIAL_COLORS[social.icon] }}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-2">

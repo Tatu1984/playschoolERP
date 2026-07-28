@@ -56,7 +56,7 @@ export function KidsShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-28 sm:px-5 sm:py-6">{children}</main>
+      <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-3 py-4 pb-28 sm:px-5 sm:py-6">{children}</main>
 
       {/* Big bottom nav — thumb-sized targets for small hands. */}
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-white/60 bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur">
