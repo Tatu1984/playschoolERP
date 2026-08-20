@@ -3,7 +3,9 @@ import Link from "next/link";
 import { PageHeader } from "@/components/sections/PageHeader";
 import { Button } from "@/components/ui/button";
 import { TestimonialsWall } from "@/frontend/components/features/marketing/TestimonialsWall";
-import { TESTIMONIALS } from "@/shared/fixtures";
+import { cmsService } from "@/backend/services/cms.service";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Parent Testimonials · Climb Kiddo",
@@ -11,7 +13,8 @@ export const metadata: Metadata = {
     "What Climb Kiddo parents actually say — separation anxiety, daily updates, live cameras and the teachers who made the difference.",
 };
 
-export default function TestimonialsPage() {
+export default async function TestimonialsPage() {
+  const testimonials = await cmsService.listTestimonials(null);
   return (
     <>
       <PageHeader
@@ -22,7 +25,7 @@ export default function TestimonialsPage() {
       />
 
       <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-8">
-        <TestimonialsWall initial={TESTIMONIALS} />
+        <TestimonialsWall initial={testimonials} />
 
         <div className="mt-12 rounded-3xl bg-ck-navy p-6 text-center text-white sm:p-10">
           <h2 className="font-[family-name:var(--font-fredoka)] text-2xl font-bold sm:text-3xl">

@@ -6,10 +6,12 @@ import { Programs } from "@/components/sections/Programs";
 import { Contact } from "@/components/sections/Contact";
 import { Badge } from "@/components/ui/badge";
 import { GradientText } from "@/components/reactbits/GradientText";
-import { PROGRAMS } from "@/shared/fixtures";
+import { publicService } from "@/backend/services/public.service";
 import { formatMoney } from "@/shared/utils/common.util";
 import { ACCENT_SOFT_BG, ACCENT_TEXT } from "@/frontend/utils/accents";
 import { cn } from "@/lib/utils";
+
+export const revalidate = 600;
 
 export const metadata: Metadata = {
   title: "Programs · Climb Kiddo",
@@ -17,7 +19,8 @@ export const metadata: Metadata = {
     "Age-perfect programs from Toddlers to Senior KG, plus abacus, activity club, summer camps and weekend workshops.",
 };
 
-export default function ProgramsPage() {
+export default async function ProgramsPage() {
+  const PROGRAMS = await publicService.programs();
   return (
     <>
       <PageHeader

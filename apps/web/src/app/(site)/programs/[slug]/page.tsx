@@ -16,13 +16,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Aurora } from "@/components/reactbits/Aurora";
 import { GradientText } from "@/components/reactbits/GradientText";
-import { CLASSROOMS, CURRICULUM, FEE_STRUCTURES, PROGRAMS, STAFF, STUDENTS } from "@/shared/fixtures";
+import { publicService } from "@/backend/services/public.service";
 import { formatMoney } from "@/shared/utils/common.util";
 import { ACCENT_SOFT_BG, ACCENT_TEXT } from "@/frontend/utils/accents";
 import { cn } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return PROGRAMS.map((p) => ({ slug: p.slug }));
+export const revalidate = 600;
+
+export async function generateStaticParams() {
+  return (await publicService.programs()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({
@@ -31,7 +33,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const program = PROGRAMS.find((p) => p.slug === slug);
+  const program = (await publicService.programs()).find((p) => p.slug === slug);
   if (!program) return { title: "Program · Climb Kiddo" };
   return {
     title: `${program.name} (${program.ageFrom}–${program.ageTo} yrs) · Climb Kiddo`,
@@ -46,14 +48,18 @@ export async function generateMetadata({
 
 export default async function ProgramDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const PROGRAMS = await publicService.programs();
   const program = PROGRAMS.find((p) => p.slug === slug);
   if (!program) notFound();
 
-  const rooms = CLASSROOMS.filter((c) => c.programSlug === program.slug);
-  const units = CURRICULUM.filter((u) => u.programSlug === program.slug).sort((a, b) => a.term - b.term);
-  const fees = FEE_STRUCTURES.find((f) => f.programSlug === program.slug);
-  const teachers = STAFF.filter((s) => s.classroomIds.some((id) => rooms.some((r) => r.id === id)));
-  const enrolled = STUDENTS.filter((s) => s.programSlug === program.slug && s.status === "ACTIVE").length;
+  const [rooms, units, feeStructures, teachers] = await Promise.all([
+    publicService.classrooms(program.slug),
+    publicService.curriculum(program.slug),
+    publicService.feeStructures(),
+    publicService.teachers(program.slug),
+  ]);
+  const fees = feeStructures.find((f) => f.programSlug === program.slug);
+  const enrolled = rooms.reduce((sum, r) => sum + r.enrolled, 0);
   const seats = rooms.reduce((sum, r) => sum + r.capacity, 0);
   const others = PROGRAMS.filter((p) => p.slug !== program.slug).slice(0, 4);
 

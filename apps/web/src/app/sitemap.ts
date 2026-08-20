@@ -1,13 +1,24 @@
 import type { MetadataRoute } from "next";
-import { BLOG_POSTS, EVENTS, PROGRAMS } from "@/shared/fixtures";
+import { publicService } from "@/backend/services/public.service";
+import { cmsService } from "@/backend/services/cms.service";
+import { admissionService } from "@/backend/services/admission.service";
 import { SITE } from "@/shared/constants/site";
 
 /**
  * Public pages only. Everything behind a login (/admin, /teacher, /parent, /kids,
  * /gms) is deliberately absent and blocked in robots.ts.
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+// Regenerated on the same cadence as the pages it lists, so a post published
+// in the CMS is crawlable without a redeploy.
+export const revalidate = 600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE.url.replace(/\/$/, "");
+  const [PROGRAMS, BLOG_POSTS, EVENTS] = await Promise.all([
+    publicService.programs(),
+    cmsService.listPosts(null),
+    admissionService.listEvents(null),
+  ]);
 
   const staticPages: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
@@ -48,13 +59,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
-    ...BLOG_POSTS.filter((p) => p.status === "PUBLISHED").map((post) => ({
+    ...BLOG_POSTS.map((post) => ({
       url: `${base}/blog/${post.slug}`,
       lastModified: new Date(post.publishedAt ?? post.createdAt),
       changeFrequency: "yearly" as const,
       priority: 0.6,
     })),
-    ...EVENTS.filter((e) => e.published).map((event) => ({
+    ...EVENTS.map((event) => ({
       url: `${base}/events/${event.slug}`,
       lastModified: new Date(event.createdAt),
       changeFrequency: "weekly" as const,

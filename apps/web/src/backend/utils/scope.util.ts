@@ -33,6 +33,21 @@ export interface Scope {
 
 const isAdmin = (role: Role) => role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN;
 
+/**
+ * The scope a public, server-rendered marketing page reads with: no user, no
+ * branch, no children. Services that accept a `Scope` treat it as "show me what
+ * anyone may see", which for branches and programmes is everything published.
+ */
+export const PUBLIC_SCOPE: Scope = {
+  userId: "",
+  role: ROLES.PARENT,
+  name: "",
+  branchId: null,
+  staffId: null,
+  studentIds: [],
+  classroomIds: [],
+};
+
 export async function resolveScope(session: Session): Promise<Scope> {
   const base: Scope = {
     userId: session.sub,

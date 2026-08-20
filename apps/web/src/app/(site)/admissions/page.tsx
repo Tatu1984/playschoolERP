@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EnquiryForm } from "@/frontend/components/features/marketing/EnquiryForm";
-import { BRANCHES, FEE_STRUCTURES, PROGRAMS, STUDENTS } from "@/shared/fixtures";
+import { publicService } from "@/backend/services/public.service";
 import { formatMoney } from "@/shared/utils/common.util";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Admissions 2026-27 · Climb Kiddo",
@@ -33,7 +35,15 @@ const STEPS = [
   },
 ];
 
-export default function AdmissionsPage() {
+export default async function AdmissionsPage() {
+  const [BRANCHES, PROGRAMS, FEE_STRUCTURES, CLASSROOMS] = await Promise.all([
+    publicService.branches(),
+    publicService.programs(),
+    publicService.feeStructures(),
+    publicService.classrooms(),
+  ]);
+  const enrolledIn = (branchId: string) =>
+    CLASSROOMS.filter((c) => c.branchId === branchId).reduce((n, c) => n + c.enrolled, 0);
   return (
     <>
       <PageHeader
@@ -137,7 +147,7 @@ export default function AdmissionsPage() {
                       Open {b.opensAt}–{b.closesAt} · {b.phone}
                     </p>
                     <p className="mt-2 text-xs font-bold text-ck-navy/50">
-                      {STUDENTS.filter((s) => s.branchId === b.id).length} children currently enrolled · capacity{" "}
+                      {enrolledIn(b.id)} children currently enrolled · capacity{" "}
                       {b.capacity}
                     </p>
                   </CardContent>

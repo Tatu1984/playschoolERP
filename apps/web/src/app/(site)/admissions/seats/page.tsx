@@ -4,15 +4,26 @@ import { PageHeader } from "@/components/sections/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { BRANCHES, CLASSROOMS, PROGRAMS, STUDENTS } from "@/shared/fixtures";
+import { publicService } from "@/backend/services/public.service";
 import { cn } from "@/lib/utils";
+
+// "Live seat availability" has to mean it: read the roster every few minutes
+// rather than baking a number into the build.
+export const revalidate = 120;
 
 export const metadata: Metadata = {
   title: "Seat Availability · Climb Kiddo Admissions",
   description: "Live seat availability per program and branch for the 2026-27 session at Climb Kiddo.",
 };
 
-export default function SeatsPage() {
+export default async function SeatsPage() {
+  const [BRANCHES, CLASSROOMS, PROGRAMS] = await Promise.all([
+    publicService.branches(),
+    publicService.classrooms(),
+    publicService.programs(),
+  ]);
+  const enrolledIn = (branchId: string) =>
+    CLASSROOMS.filter((c) => c.branchId === branchId).reduce((n, c) => n + c.enrolled, 0);
   return (
     <>
       <PageHeader
@@ -37,7 +48,7 @@ export default function SeatsPage() {
                   </p>
                 </div>
                 <Badge variant="secondary" className="rounded-full font-bold">
-                  {STUDENTS.filter((s) => s.branchId === branch.id && s.status === "ACTIVE").length} enrolled of{" "}
+                  {enrolledIn(branch.id)} enrolled of{" "}
                   {branch.capacity}
                 </Badge>
               </div>
@@ -45,7 +56,7 @@ export default function SeatsPage() {
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {rooms.map((room) => {
                   const program = PROGRAMS.find((p) => p.slug === room.programSlug);
-                  const taken = STUDENTS.filter((s) => s.classroomId === room.id && s.status !== "WITHDRAWN").length;
+                  const taken = room.enrolled;
                   const left = Math.max(0, room.capacity - taken);
                   const state = left === 0 ? "full" : left <= 2 ? "few" : "open";
                   return (
