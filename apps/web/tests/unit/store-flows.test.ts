@@ -4,6 +4,11 @@
  * Drives the ERP store the same way the UI does, to prove the logic behind the
  * buttons actually works (not just that the pages render).
  */
+// The store talks to /api in the browser; these tests drive its reducers
+// directly, so switch the network side off explicitly rather than relying on
+// the environment not having `window`.
+(globalThis as Record<string, unknown>).__ERP_NO_API__ = true;
+
 const mem = new Map<string, string>();
 // zustand/persist needs a Storage before the store module is imported.
 (globalThis as unknown as { localStorage: Storage }).localStorage = {

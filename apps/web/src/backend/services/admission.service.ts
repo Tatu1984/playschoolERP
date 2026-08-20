@@ -136,6 +136,11 @@ export const admissionService = {
     return toInquiry(row);
   },
 
+  async deleteInquiry(scope: Scope, id: string): Promise<void> {
+    requireRole(scope.role, ADMINS);
+    await engagementRepository.deleteInquiry(id);
+  },
+
   // --------------------------------------------------------- applications
   async listApplications(scope: Scope): Promise<Application[]> {
     requireRole(scope.role, ADMINS);

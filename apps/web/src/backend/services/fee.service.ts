@@ -22,7 +22,11 @@ import { requireRole } from "@/backend/utils/rbac.util";
 import { canSeeStudent, type Scope } from "@/backend/utils/scope.util";
 import { ROLES, type Role } from "@/shared/constants/roles";
 import type { FeeStructure, Invoice, Payment, PaymentMethod } from "@/shared/types/engagement.types";
-import type { CreateInvoiceInput, RecordPaymentInput } from "@/backend/validators/fee.validator";
+import type {
+  CreateInvoiceInput,
+  FeeStructureInput,
+  RecordPaymentInput,
+} from "@/backend/validators/fee.validator";
 
 const ADMINS: Role[] = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 /** Methods a staff member may record without a gateway round-trip. */
@@ -84,6 +88,12 @@ export const feeService = {
   async listStructures(scope: Scope): Promise<FeeStructure[]> {
     const where = scope.branchId && scope.role !== ROLES.SUPER_ADMIN ? { branchId: scope.branchId } : {};
     return (await feeRepository.listStructures(where)).map(toFeeStructure);
+  },
+
+  async upsertStructure(scope: Scope, input: FeeStructureInput): Promise<FeeStructure> {
+    requireRole(scope.role, ADMINS);
+    const row = await feeRepository.upsertStructure(input.branchId, input.programSlug, input);
+    return toFeeStructure(row);
   },
 
   async createInvoice(scope: Scope, input: CreateInvoiceInput): Promise<Invoice> {

@@ -58,6 +58,9 @@ export const engagementRepository = {
   updateInquiry(id: string, data: Prisma.InquiryUncheckedUpdateInput) {
     return prisma.inquiry.update({ where: { id }, data, include: inquiryInclude });
   },
+  deleteInquiry(id: string) {
+    return prisma.inquiry.delete({ where: { id } });
+  },
   addInquiryNote(inquiryId: string, body: string, author: string) {
     return prisma.inquiryNote.create({ data: { inquiryId, body, author } });
   },

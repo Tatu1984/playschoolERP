@@ -7,6 +7,11 @@
  * production once (Base UI's Menu.GroupLabel throws outside a Menu.Group).
  * Anything that throws while an overlay is open fails here.
  */
+
+// The store talks to /api in the browser; these tests drive its reducers
+// directly, so switch the network side off explicitly rather than relying on
+// the environment not having `window`.
+(globalThis as Record<string, unknown>).__ERP_NO_API__ = true;
 import { JSDOM } from "jsdom";
 
 const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>", {

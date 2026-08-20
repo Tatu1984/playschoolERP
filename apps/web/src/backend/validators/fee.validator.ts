@@ -53,5 +53,6 @@ export const feeStructureSchema = z.object({
   lateFeePerDay: z.number().int().min(0).default(0),
 });
 
+export type FeeStructureInput = z.infer<typeof feeStructureSchema>;
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;

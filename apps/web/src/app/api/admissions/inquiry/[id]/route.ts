@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { admissionService } from "@/backend/services/admission.service";
 import { inquiryStageSchema } from "@/backend/validators/admission.validator";
 import { authed } from "@/backend/utils/route.util";
@@ -11,4 +11,10 @@ export const PATCH = authed(async (req: NextRequest, ctx: RouteContext<"/api/adm
   const scope = await resolveScope(session);
   const { stage } = inquiryStageSchema.parse(await req.json());
   return { inquiry: await admissionService.moveInquiry(scope, id, stage) };
+});
+
+export const DELETE = authed(async (_req: NextRequest, ctx: RouteContext<"/api/admissions/inquiry/[id]">, session) => {
+  const { id } = await ctx.params;
+  await admissionService.deleteInquiry(await resolveScope(session), id);
+  return new NextResponse(null, { status: 204 });
 });

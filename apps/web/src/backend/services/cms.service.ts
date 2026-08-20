@@ -172,6 +172,11 @@ export const cmsService = {
     return toMediaAsset(await prisma.mediaAsset.create({ data: input }));
   },
 
+  async updateMedia(scope: Scope, id: string, input: Partial<MediaAssetInput>): Promise<MediaAsset> {
+    requireRole(scope.role, ADMINS);
+    return toMediaAsset(await prisma.mediaAsset.update({ where: { id }, data: input }));
+  },
+
   async deleteMedia(scope: Scope, id: string): Promise<void> {
     requireRole(scope.role, ADMINS);
     await prisma.mediaAsset.delete({ where: { id } });

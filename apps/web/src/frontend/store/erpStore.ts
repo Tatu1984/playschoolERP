@@ -1,17 +1,27 @@
 "use client";
 
 /**
- * The single client-side source of truth for every ERP surface (admin, teacher,
- * parent, kids). Seeded from `@/shared/fixtures` and persisted to localStorage
- * so create/edit/delete survives navigation and reload.
+ * The portal's client-side cache of everything the signed-in user may see.
  *
- * ⚠️ This is the seam the backend phase replaces: each action here maps 1:1 to
- * an endpoint in SoW §7. Components never touch fixtures directly — they go
- * through selectors in `@/frontend/store/selectors` and actions on this store,
- * so swapping in `fetch()` calls does not touch a single component.
+ * Postgres is the source of truth. This store hydrates from `/api/bootstrap`
+ * once per session and then works the way a good offline-tolerant client
+ * should: apply the change locally so the UI never waits on the network, send
+ * it to the server, and let the server's answer win.
+ *
+ * When a write fails — a stale record, a permission the UI guessed wrong, a
+ * dropped connection — the store does not try to reconcile field by field. It
+ * says so and refetches, because a cache that quietly disagrees with the school
+ * office is worse than one that reloads.
+ *
+ * Components never touch fixtures or `fetch` directly: they call actions here
+ * and the pure selectors in `queries.ts`. That is what made swapping the whole
+ * data layer possible without editing a single page.
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { toast } from "sonner";
+
+import { apiEnabled } from "@/frontend/api/client";
+import * as remote from "@/frontend/api/erp";
 
 import type {
   Activity,
@@ -124,6 +134,14 @@ export interface ErpData {
   artworks: Artwork[];
 }
 
+/** Load state. `hydrated` is what portal pages wait on before they render. */
+export interface ErpMeta {
+  hydrated: boolean;
+  loading: boolean;
+  /** Last sync failure, already shown as a toast; kept for the settings page. */
+  lastError: string | null;
+}
+
 /** Keys of ErpData that hold arrays of `{ id }` records — the CRUD-able ones. */
 export type CollectionKey = {
   [K in keyof ErpData]: ErpData[K] extends { id: string }[] ? K : never;
@@ -132,6 +150,11 @@ export type CollectionKey = {
 type ItemOf<K extends CollectionKey> = ErpData[K][number];
 
 export interface ErpActions {
+  /** Pull everything this login may see and replace the cache with it. */
+  refresh(): Promise<void>;
+  /** Replace the cache with a snapshot already in hand (server-rendered use). */
+  hydrate(data: ErpData): void;
+
   // -- generic CRUD (maps to POST / PATCH / DELETE on the matching resource)
   addItem<K extends CollectionKey>(key: K, item: ItemOf<K>): void;
   patchItem<K extends CollectionKey>(key: K, id: ID, patch: Partial<ItemOf<K>>): void;
@@ -186,7 +209,7 @@ export interface ErpActions {
   resetDemoData(): void;
 }
 
-export type ErpStore = ErpData & ErpActions;
+export type ErpStore = ErpData & ErpMeta & ErpActions;
 
 // ---------------------------------------------------------------- helpers
 
@@ -210,42 +233,108 @@ function ensureJourney(journeys: JourneyState[], studentId: ID): JourneyState {
   );
 }
 
-const STORE_VERSION = 1;
+/**
+ * Send a local change to the server. Failures are surfaced once and then healed
+ * by refetching, rather than left as an optimistic lie on screen.
+ */
+function push(run: () => Promise<unknown>): void {
+  if (!apiEnabled()) return;
+  void run().catch((e: unknown) => {
+    const message = e instanceof Error ? e.message : "Could not save that change";
+    console.error("[erp] sync failed:", e);
+    toast.error(message);
+    useErpStore.setState({ lastError: message });
+    void useErpStore.getState().refresh();
+  });
+}
+
+/**
+ * Swap an optimistic record for the server's canonical one. The client mints a
+ * temporary id so the UI can render immediately; the database assigns the real
+ * one, and everything that references it afterwards must use that.
+ */
+function reconcile<K extends CollectionKey>(key: K, tempId: ID, saved: ItemOf<K> | null): void {
+  if (!saved) return;
+  useErpStore.setState((state) => {
+    const list = state[key] as { id: string }[];
+    return { [key]: list.map((i) => (i.id === tempId ? saved : i)) } as unknown as Partial<ErpStore>;
+  });
+}
 
 // ---------------------------------------------------------------- store
 
 export const useErpStore = create<ErpStore>()(
-  persist(
-    (set, get) => ({
+    ((set, get) => ({
+      // Fixtures are the shape of the cache before the first fetch lands, and
+      // the dataset the store-flow tests drive directly. Portal pages wait for
+      // `hydrated` (see StoreGate), so nobody ever sees them on screen.
       ...buildDemoData(),
+      hydrated: false,
+      loading: false,
+      lastError: null,
+
+      refresh: async () => {
+        if (!apiEnabled()) {
+          set({ hydrated: true });
+          return;
+        }
+        set({ loading: true });
+        try {
+          const data = await remote.fetchSnapshot();
+          set({ ...data, hydrated: true, loading: false, lastError: null });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Could not load your data";
+          console.error("[erp] bootstrap failed:", e);
+          // Hydrated stays false: a portal showing fixture data as if it were
+          // the school's would be worse than a portal that says it is stuck.
+          set({ loading: false, lastError: message });
+        }
+      },
+
+      hydrate: (data) => set({ ...data, hydrated: true, loading: false, lastError: null }),
 
       // ---- generic CRUD -----------------------------------------------
-      addItem: (key, item) =>
+      addItem: (key, item) => {
         set((state) => {
           const list = state[key] as { id: string }[];
           return { [key]: [item, ...list] } as unknown as Partial<ErpStore>;
-        }),
+        });
+        const tempId = (item as { id: ID }).id;
+        push(async () => reconcile(key, tempId, await remote.createRecord(key, item)));
+      },
 
-      patchItem: (key, id, patch) =>
+      patchItem: (key, id, patch) => {
         set((state) => {
           const list = state[key] as { id: string }[];
           return { [key]: replace(list, id, patch) } as unknown as Partial<ErpStore>;
-        }),
+        });
+        // Fee structures and progress reports are identified by a pair of
+        // fields rather than an id, so they need the whole record, not a diff.
+        const whole = (get()[key] as { id: string }[]).find((i) => i.id === id);
+        push(() => remote.updateRecord(key, id, whole ?? patch));
+      },
 
-      removeItem: (key, id) =>
+      removeItem: (key, id) => {
         set((state) => {
           const list = state[key] as { id: string }[];
           return { [key]: list.filter((i) => i.id !== id) } as unknown as Partial<ErpStore>;
-        }),
+        });
+        push(() => remote.deleteRecord(key, id));
+      },
 
-      removeMany: (key, ids) =>
+      removeMany: (key, ids) => {
         set((state) => {
           const list = state[key] as { id: string }[];
           return { [key]: list.filter((i) => !ids.includes(i.id)) } as unknown as Partial<ErpStore>;
-        }),
+        });
+        push(async () => {
+          for (const id of ids) await remote.deleteRecord(key, id);
+        });
+      },
 
       // ---- attendance --------------------------------------------------
-      markAttendance: (studentId, classroomId, status, date = dateKey(today())) =>
+      markAttendance: (studentId, classroomId, status, date = dateKey(today())) => {
+        push(() => remote.markAttendance(studentId, classroomId, status, date));
         set((state) => {
           const existing = state.attendance.find((a) => a.studentId === studentId && a.date === date);
           if (existing) {
@@ -273,15 +362,49 @@ export const useErpStore = create<ErpStore>()(
             createdAt: nowIso(),
           };
           return { attendance: [record, ...state.attendance] };
-        }),
+        });
+      },
 
       bulkMarkAttendance: (classroomId, status, date = dateKey(today())) => {
         const roster = get().students.filter((s) => s.classroomId === classroomId);
-        roster.forEach((s) => get().markAttendance(s.id, classroomId, status, date));
+        // One request for the class, not one per child — but the same local
+        // reducer runs per child so the roster updates row by row.
+        push(() => remote.bulkMarkAttendance(classroomId, status, date));
+        roster.forEach((s) =>
+          set((state) => {
+            const existing = state.attendance.find((a) => a.studentId === s.id && a.date === date);
+            if (existing) {
+              return {
+                attendance: replace(state.attendance, existing.id, {
+                  status,
+                  checkInAt: status === "ABSENT" ? null : (existing.checkInAt ?? nowIso()),
+                }),
+              };
+            }
+            const record: AttendanceRecord = {
+              id: newId("att"),
+              studentId: s.id,
+              classroomId,
+              date,
+              status,
+              checkInAt: status === "ABSENT" ? null : nowIso(),
+              checkOutAt: null,
+              pickedUpBy: null,
+              markedByStaffId: null,
+              note: "",
+              mood: null,
+              mealsEaten: null,
+              napMinutes: null,
+              createdAt: nowIso(),
+            };
+            return { attendance: [record, ...state.attendance] };
+          }),
+        );
       },
 
       checkIn: (studentId, classroomId) => {
         const date = dateKey(today());
+        push(() => remote.checkIn(studentId, classroomId));
         get().markAttendance(studentId, classroomId, "PRESENT", date);
         set((state) => {
           const rec = state.attendance.find((a) => a.studentId === studentId && a.date === date);
@@ -289,57 +412,78 @@ export const useErpStore = create<ErpStore>()(
         });
       },
 
-      checkOut: (studentId, pickedUpBy) =>
-        set((state) => {
+      checkOut: (studentId, pickedUpBy) => {
+        push(() => remote.checkOut(studentId, pickedUpBy));
+        return set((state) => {
           const date = dateKey(today());
           const rec = state.attendance.find((a) => a.studentId === studentId && a.date === date);
           if (!rec) return {};
           return {
             attendance: replace(state.attendance, rec.id, { checkOutAt: nowIso(), pickedUpBy }),
           };
-        }),
+        });
+      },
 
-      updateDayLog: (studentId, date, patch) =>
+      updateDayLog: (studentId, date, patch) => {
+        push(() => remote.updateDayLog(studentId, date, patch as Record<string, unknown>));
         set((state) => {
           const rec = state.attendance.find((a) => a.studentId === studentId && a.date === date);
           if (!rec) return {};
           return { attendance: replace(state.attendance, rec.id, patch) };
-        }),
+        });
+      },
 
       // ---- feed --------------------------------------------------------
-      toggleActivityReaction: (activityId, userId) =>
+      toggleActivityReaction: (activityId, userId) => {
+        push(() => remote.toggleReaction(activityId));
         set((state) => {
           const act = state.activities.find((a) => a.id === activityId);
           if (!act) return {};
           return { activities: replace(state.activities, activityId, { reactions: toggle(act.reactions, userId) }) };
-        }),
+        });
+      },
 
-      commentOnActivity: (activityId, comment) =>
+      commentOnActivity: (activityId, comment) => {
+        push(() => remote.commentOnActivity(activityId, comment.body));
         set((state) => {
           const act = state.activities.find((a) => a.id === activityId);
           if (!act) return {};
           const full: ActivityComment = { ...comment, id: newId("cmt"), createdAt: nowIso() };
           return { activities: replace(state.activities, activityId, { comments: [...act.comments, full] }) };
-        }),
+        });
+      },
 
-      publishActivity: (activityId, published) =>
-        set((state) => ({ activities: replace(state.activities, activityId, { published }) })),
+      publishActivity: (activityId, published) => {
+        push(() => remote.setActivityPublished(activityId, published));
+        set((state) => ({ activities: replace(state.activities, activityId, { published }) }));
+      },
 
       // ---- notices -----------------------------------------------------
-      markNoticeRead: (noticeId, userId) =>
+      markNoticeRead: (noticeId, userId) => {
+        push(() => remote.markNoticeRead(noticeId));
         set((state) => {
           const notice = state.notices.find((n) => n.id === noticeId);
           if (!notice || notice.readBy.includes(userId)) return {};
           return { notices: replace(state.notices, noticeId, { readBy: [...notice.readBy, userId] }) };
-        }),
+        });
+      },
 
-      publishNotice: (noticeId, publish) =>
+      publishNotice: (noticeId, publish) => {
+        push(() => remote.setNoticePublished(noticeId, publish));
         set((state) => ({
           notices: replace(state.notices, noticeId, { publishedAt: publish ? nowIso() : null }),
-        })),
+        }));
+      },
 
       // ---- messaging ---------------------------------------------------
-      sendMessage: (conversationId, msg) =>
+      sendMessage: (conversationId, msg) => {
+        push(() =>
+          remote.sendMessage(conversationId, {
+            kind: msg.kind,
+            body: msg.body,
+            ...(msg.durationSec ? { durationSec: msg.durationSec } : {}),
+          }),
+        );
         set((state) => {
           const full: Message = { ...msg, id: newId("msg"), conversationId, createdAt: nowIso(), readAt: null };
           const conv = state.conversations.find((c) => c.id === conversationId);
@@ -354,7 +498,8 @@ export const useErpStore = create<ErpStore>()(
                 })
               : state.conversations,
           };
-        }),
+        });
+      },
 
       startConversation: (conv, firstMessage, sender) => {
         const id = newId("cv");
@@ -385,11 +530,32 @@ export const useErpStore = create<ErpStore>()(
             },
           ],
         }));
+        push(async () => {
+          const res = await remote.startConversation({
+            studentId: conv.studentId,
+            participantIds: conv.participantIds,
+            parentName: conv.parentName,
+            teacherName: conv.teacherName,
+            subject: conv.subject,
+            firstMessage,
+          });
+          // The thread the parent is now looking at has a temporary id; adopt
+          // the server's before the next message is sent into a void.
+          const realId = res?.conversation?.id;
+          if (!realId) return;
+          useErpStore.setState((state) => ({
+            conversations: state.conversations.map((c) => (c.id === id ? { ...c, id: realId } : c)),
+            messages: state.messages.map((m) =>
+              m.conversationId === id ? { ...m, conversationId: realId } : m,
+            ),
+          }));
+        });
         return id;
       },
 
-      markConversationRead: (conversationId, side) =>
-        set((state) => ({
+      markConversationRead: (conversationId, side) => {
+        push(() => remote.markConversationRead(conversationId));
+        return set((state) => ({
           conversations: replace(
             state.conversations,
             conversationId,
@@ -398,10 +564,12 @@ export const useErpStore = create<ErpStore>()(
           messages: state.messages.map((m) =>
             m.conversationId === conversationId && !m.readAt ? { ...m, readAt: nowIso() } : m,
           ),
-        })),
+        }));
+      },
 
       // ---- fees --------------------------------------------------------
-      payInvoice: (invoiceId, amount, method) =>
+      payInvoice: (invoiceId, amount, method) => {
+        if (amount > 0) push(() => remote.payInvoice(invoiceId, amount, method));
         set((state) => {
           const inv = state.invoices.find((i) => i.id === invoiceId);
           // Ignore no-op collections so a ₹0 submit can never flip an unpaid
@@ -428,31 +596,42 @@ export const useErpStore = create<ErpStore>()(
               status: settled ? "PAID" : "PARTIAL",
             }),
           };
-        }),
+        });
+      },
 
-      issueInvoice: (invoice) => set((state) => ({ invoices: [invoice, ...state.invoices] })),
+      issueInvoice: (invoice) => {
+        set((state) => ({ invoices: [invoice, ...state.invoices] }));
+        push(async () => reconcile("invoices", invoice.id, await remote.createRecord("invoices", invoice)));
+      },
 
       // ---- events ------------------------------------------------------
-      rsvpEvent: (eventId, userId, name, guests) =>
+      rsvpEvent: (eventId, userId, name, guests) => {
+        push(() => remote.rsvpEvent(eventId, guests));
         set((state) => {
           const ev = state.events.find((e) => e.id === eventId);
           if (!ev) return {};
           const rsvps = [...ev.rsvps.filter((r) => r.userId !== userId), { userId, name, guests }];
           return { events: replace(state.events, eventId, { rsvps }) };
-        }),
+        });
+      },
 
-      cancelRsvp: (eventId, userId) =>
+      cancelRsvp: (eventId, userId) => {
+        push(() => remote.cancelRsvp(eventId));
         set((state) => {
           const ev = state.events.find((e) => e.id === eventId);
           if (!ev) return {};
           return { events: replace(state.events, eventId, { rsvps: ev.rsvps.filter((r) => r.userId !== userId) }) };
-        }),
+        });
+      },
 
       // ---- admissions --------------------------------------------------
-      moveInquiry: (inquiryId, stage) =>
-        set((state) => ({ inquiries: replace(state.inquiries, inquiryId, { stage }) })),
+      moveInquiry: (inquiryId, stage) => {
+        push(() => remote.moveInquiry(inquiryId, stage));
+        set((state) => ({ inquiries: replace(state.inquiries, inquiryId, { stage }) }));
+      },
 
-      addInquiryNote: (inquiryId, body, author) =>
+      addInquiryNote: (inquiryId, body, author) => {
+        push(() => remote.addInquiryNote(inquiryId, body));
         set((state) => {
           const inq = state.inquiries.find((i) => i.id === inquiryId);
           if (!inq) return {};
@@ -461,17 +640,21 @@ export const useErpStore = create<ErpStore>()(
               notes: [...inq.notes, { id: newId("n"), body, author, createdAt: nowIso() }],
             }),
           };
-        }),
+        });
+      },
 
-      setApplicationStatus: (applicationId, status, note) =>
+      setApplicationStatus: (applicationId, status, note) => {
+        push(() => remote.setApplicationStatus(applicationId, status, note));
         set((state) => ({
           applications: replace(state.applications, applicationId, {
             status,
             ...(note !== undefined ? { decisionNote: note } : {}),
           }),
-        })),
+        }));
+      },
 
-      toggleApplicationDoc: (applicationId, docId) =>
+      toggleApplicationDoc: (applicationId, docId) => {
+        push(() => remote.toggleApplicationDoc(applicationId, docId));
         set((state) => {
           const app = state.applications.find((a) => a.id === applicationId);
           if (!app) return {};
@@ -484,40 +667,58 @@ export const useErpStore = create<ErpStore>()(
               ),
             }),
           };
-        }),
+        });
+      },
 
       // ---- notifications ------------------------------------------------
-      markNotificationRead: (id) =>
-        set((state) => ({ notifications: replace(state.notifications, id, { read: true }) })),
+      markNotificationRead: (id) => {
+        push(() => remote.markNotificationRead(id));
+        set((state) => ({ notifications: replace(state.notifications, id, { read: true }) }));
+      },
 
-      markAllNotificationsRead: (userId) =>
+      markAllNotificationsRead: (userId) => {
+        push(() => remote.markAllNotificationsRead());
         set((state) => ({
           notifications: state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)),
-        })),
+        }));
+      },
 
-      setNotificationPreference: (patch) =>
-        set((state) => ({ notificationPreference: { ...state.notificationPreference, ...patch } })),
+      setNotificationPreference: (patch) => {
+        push(() => remote.setNotificationPreference(patch));
+        set((state) => ({ notificationPreference: { ...state.notificationPreference, ...patch } }));
+      },
 
       // ---- settings / audit ---------------------------------------------
-      upsertMedicalProfile: (profile) =>
+      upsertMedicalProfile: (profile) => {
+        push(() => remote.upsertMedicalProfile(profile.studentId, profile as unknown as Record<string, unknown>));
         set((state) => ({
           medicalProfiles: state.medicalProfiles.some((m) => m.studentId === profile.studentId)
             ? state.medicalProfiles.map((m) => (m.studentId === profile.studentId ? profile : m))
             : [...state.medicalProfiles, profile],
-        })),
+        }));
+      },
 
-      setRolePermissions: (role, permissions) =>
+      setRolePermissions: (role, permissions) => {
+        push(() => remote.setRolePermissions(role, permissions));
         set((state) => ({
           roleDefinitions: state.roleDefinitions.map((d) => (d.role === role ? { ...d, permissions } : d)),
-        })),
+        }));
+      },
 
-      updateSettings: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
+      updateSettings: (patch) => {
+        push(() => remote.updateSettings(patch));
+        set((state) => ({ settings: { ...state.settings, ...patch } }));
+      },
 
-      toggleFeature: (key) =>
-        set((state) => ({
-          settings: { ...state.settings, features: { ...state.settings.features, [key]: !state.settings.features[key] } },
-        })),
+      toggleFeature: (key) => {
+        const features = { ...get().settings.features, [key]: !get().settings.features[key] };
+        push(() => remote.updateSettings({ features }));
+        set((state) => ({ settings: { ...state.settings, features } }));
+      },
 
+      // Local only, and deliberately: the server writes its own audit entry
+      // inside each mutating endpoint, which is the record that counts. This
+      // one just keeps the admin's own screen current until the next refresh.
       logAudit: (entry) =>
         set((state) => ({
           auditEntries: [{ ...entry, id: newId("au"), createdAt: nowIso() }, ...state.auditEntries],
@@ -525,6 +726,7 @@ export const useErpStore = create<ErpStore>()(
 
       // ---- kids zone -----------------------------------------------------
       finishGame: (studentId, gameSlug, score, stars, durationSec) => {
+        push(() => remote.finishGame({ studentId, gameSlug, score, stars, durationSec }));
         const journey = ensureJourney(get().journeys, studentId);
         const totalStars = journey.stars + stars;
         const streakDays =
@@ -568,6 +770,7 @@ export const useErpStore = create<ErpStore>()(
       finishStory: (studentId, storyId) => {
         const journey = ensureJourney(get().journeys, studentId);
         if (journey.finishedStories.includes(storyId)) return;
+        push(() => remote.finishStory(studentId, storyId));
         const next: JourneyState = {
           ...journey,
           stars: journey.stars + 1,
@@ -578,25 +781,34 @@ export const useErpStore = create<ErpStore>()(
       },
 
       setMascot: (studentId, mascot) => {
+        push(() => remote.setMascot(studentId, mascot));
         const journey = ensureJourney(get().journeys, studentId);
         set((state) => ({
           journeys: [...state.journeys.filter((j) => j.studentId !== studentId), { ...journey, mascot }],
         }));
       },
 
-      saveArtwork: (studentId, title, dataUrl) =>
+      saveArtwork: (studentId, title, dataUrl) => {
+        const id = newId("art");
         set((state) => ({
-          artworks: [{ id: newId("art"), studentId, title, dataUrl, createdAt: nowIso() }, ...state.artworks],
-        })),
+          artworks: [{ id, studentId, title, dataUrl, createdAt: nowIso() }, ...state.artworks],
+        }));
+        push(async () =>
+          reconcile("artworks", id, ((await remote.saveArtwork(studentId, title, dataUrl)) as {
+            artwork?: Artwork;
+          })?.artwork ?? null),
+        );
+      },
 
-      resetDemoData: () => set({ ...buildDemoData() }),
-    }),
-    {
-      name: "climbkiddo-erp-demo",
-      version: STORE_VERSION,
-      // A schema change invalidates the cached demo data rather than trying to
-      // migrate it — this is throwaway state until the API exists.
-      migrate: () => ({ ...buildDemoData() }) as unknown as ErpStore,
-    },
-  ),
+      // Was "throw away my local edits"; now it means "forget the cache and
+      // ask the server again", which is the only honest reading once the
+      // database owns the data.
+      resetDemoData: () => {
+        if (!apiEnabled()) {
+          set({ ...buildDemoData() });
+          return;
+        }
+        void get().refresh();
+      },
+    })),
 );
