@@ -319,12 +319,15 @@ export const schoolService = {
       return rows.map(toGuardian);
     }
     requireRole(scope.role, STAFF);
-    const rows = await schoolRepository.listGuardians(
-      scope.branchId && scope.role !== ROLES.SUPER_ADMIN
-        ? { guardianships: { some: { student: { branchId: scope.branchId } } } }
-        : {},
-    );
-    return rows.map(toGuardian);
+    // A teacher needs to reach the families of the children in front of them,
+    // and no further. An admin runs the branch, so they get the branch.
+    const where =
+      scope.role === ROLES.TEACHER
+        ? { guardianships: { some: { student: { classroomId: { in: scope.classroomIds } } } } }
+        : scope.branchId && scope.role !== ROLES.SUPER_ADMIN
+          ? { guardianships: { some: { student: { branchId: scope.branchId } } } }
+          : {};
+    return (await schoolRepository.listGuardians(where)).map(toGuardian);
   },
 
   async createGuardian(scope: Scope, input: CreateGuardianInput): Promise<Guardian> {
