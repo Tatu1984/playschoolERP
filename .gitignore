@@ -58,5 +58,5 @@ packages/*/dist/
 # Prisma generated client (monorepo path)
 apps/web/src/backend/database/generated/
 
-# file-sync duplicates ("name 2.ext") — quarantined, never committed
-* 2.*
+# file-sync duplicates ("name 2.ext", "name 3.ext") — never committed
+* [0-9].*

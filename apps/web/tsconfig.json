@@ -35,9 +35,11 @@
   ],
   "exclude": [
     "node_modules",
-    // Stray "<name> 2.ext" copies left behind by file-sync tools. They are not
-    // routed, not imported, and byte-stale — but they do break `tsc` when they
-    // land in generated folders (.next/types, prisma client).
-    "**/* 2.*"
+    // Stray "<name> 2.ext" / "<name> 3.ext" copies left behind by the file-sync
+    // tool running on this machine. They are not routed and not imported, but
+    // they do break `tsc` when they land in generated folders (.next/types,
+    // the Prisma client) — the copy redeclares every type in the original.
+    // (TypeScript's globs have no character ranges, so `?` does the work.)
+    "**/* ?.*"
   ]
 }

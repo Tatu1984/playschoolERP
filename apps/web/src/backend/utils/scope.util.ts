@@ -19,6 +19,8 @@ import type { Session } from "./route.util";
 export interface Scope {
   userId: string;
   role: Role;
+  /** Display name of the logged-in person — comments and notices are signed. */
+  name: string;
   /** null for SUPER_ADMIN (all branches) and for parents (derived per child). */
   branchId: string | null;
   /** Staff id when this login is a staff member. */
@@ -35,6 +37,7 @@ export async function resolveScope(session: Session): Promise<Scope> {
   const base: Scope = {
     userId: session.sub,
     role: session.role,
+    name: session.name,
     branchId: session.role === ROLES.SUPER_ADMIN ? null : session.branchId,
     staffId: null,
     studentIds: [],
