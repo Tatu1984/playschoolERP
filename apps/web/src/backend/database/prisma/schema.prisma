@@ -1,6 +1,18 @@
-// Playschool ERP — Prisma schema
-// Foundation (auth, branches, classrooms, students, guardianship) + CCTV module.
-// Kept in sync with src/shared/constants/roles.ts.
+// Playschool ERP — Prisma schema (SoW §11).
+//
+// Every model here maps 1:1 onto a type in `@climbkiddo/shared`, which is what
+// the UI, the seed and the API responses all agree on. When the two disagree,
+// the shared type wins: it is the contract three surfaces depend on.
+//
+// Two conventions worth knowing before editing:
+//
+//  * Value-object arrays that are only ever read as a whole (media refs,
+//    per-skill scores, checklist rows) are `Json` columns rather than tables.
+//    Anything that is queried, counted or joined independently — a comment, a
+//    reaction, an RSVP, an invoice line — is a real model.
+//  * Seeded ids are the fixture ids (`br_kathgola`, `stu_aarav`, `st_meera`),
+//    including for staff Users, so the demo dataset's cross-references survive
+//    the trip into Postgres.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,6 +22,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
 enum Role {
   SUPER_ADMIN
@@ -21,8 +37,246 @@ enum Role {
 enum GuardianRelation {
   MOTHER
   FATHER
-  GUARDIAN
+  GRANDPARENT
+  UNCLE
+  AUNT
   OTHER
+}
+
+enum Gender {
+  M
+  F
+  OTHER
+}
+
+enum StudentStatus {
+  ACTIVE
+  ON_LEAVE
+  GRADUATED
+  WITHDRAWN
+}
+
+enum StaffStatus {
+  ACTIVE
+  ON_LEAVE
+  RESIGNED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  UNMARKED
+}
+
+enum ChildMood {
+  HAPPY
+  CALM
+  SLEEPY
+  FUSSY
+  UNWELL
+}
+
+enum MealsEaten {
+  ALL
+  MOST
+  SOME
+  NONE
+}
+
+enum ActivityKind {
+  LEARNING
+  PLAY
+  MEAL
+  NAP
+  ART
+  MUSIC
+  OUTDOOR
+  CELEBRATION
+}
+
+enum AuthorRole {
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+enum NoticeAudience {
+  ALL
+  PARENTS
+  STAFF
+  CLASSROOM
+}
+
+enum NoticePriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+enum MessageKind {
+  TEXT
+  VOICE
+  FILE
+  SYSTEM
+}
+
+enum MeetingMode {
+  IN_PERSON
+  VIDEO
+  PHONE
+}
+
+enum MeetingStatus {
+  REQUESTED
+  CONFIRMED
+  DECLINED
+  COMPLETED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  NETBANKING
+  CASH
+  CHEQUE
+}
+
+enum EventKind {
+  CELEBRATION
+  SPORTS
+  WORKSHOP
+  PTM
+  HOLIDAY
+  TRIP
+  COMPETITION
+}
+
+enum InquiryStage {
+  NEW
+  CONTACTED
+  VISIT_SCHEDULED
+  APPLICATION
+  ENROLLED
+  LOST
+}
+
+enum InquirySource {
+  WEBSITE
+  WALK_IN
+  REFERRAL
+  PHONE
+  SOCIAL
+  CAMPAIGN
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  DOCS_PENDING
+  SEAT_OFFERED
+  ACCEPTED
+  REJECTED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum VisitMode {
+  CAMPUS
+  VIDEO
+}
+
+enum LessonSlot {
+  MORNING
+  MIDDAY
+  AFTERNOON
+}
+
+enum LessonStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+enum SkillKey {
+  cognitive
+  language
+  motor
+  social
+  emotional
+  creative
+}
+
+enum GameEngine {
+  BALLOON_POP
+  SHAPE_MATCH
+  SOUND_MATCH
+  COLOR_SORT
+  COUNTING
+  TRACING
+  MEMORY_CARDS
+  WORD_BUILDER
+  PATTERN
+  MATH_ADVENTURE
+  QUIZ
+}
+
+enum MascotKey {
+  kiki
+  dodo
+  mimi
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum MediaKind {
+  image
+  video
+  audio
+  document
+}
+
+enum NotificationKind {
+  ACTIVITY
+  ATTENDANCE
+  NOTICE
+  FEE
+  MESSAGE
+  EVENT
+  ACHIEVEMENT
+  EMERGENCY
+  SYSTEM
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum BroadcastSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }
 
 enum CctvLogAction {
@@ -33,25 +287,97 @@ enum CctvLogAction {
 }
 
 // ---------------------------------------------------------------------------
-// Foundation
+// Structure — branches, programs, classrooms
 // ---------------------------------------------------------------------------
 
 model Branch {
   id        String   @id @default(cuid())
   name      String
+  // URL-safe key used by CCTV/infra config; `code` is the human one on invoices.
   slug      String   @unique
-  address   String?
+  code      String   @unique
+  address   String   @default("")
+  city      String   @default("")
+  pincode   String   @default("")
+  phone     String   @default("")
+  email     String   @default("")
+  active    Boolean  @default(true)
+  // Portal-facing opening window, "HH:mm". The authoritative gate for live CCTV
+  // is SchoolHours below (per weekday, in minutes) — this pair is for display.
+  opensAt   String   @default("08:00")
+  closesAt  String   @default("18:30")
+  capacity  Int      @default(0)
   // IANA tz (e.g. "Asia/Kolkata") — school-hours gating is evaluated in this zone
   timezone  String   @default("Asia/Kolkata")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users       User[]
-  classrooms  Classroom[]
-  students    Student[]
-  cameras     Camera[]
-  schoolHours SchoolHours[]
+  users         User[]
+  classrooms    Classroom[]
+  students      Student[]
+  staff         Staff[]
+  cameras       Camera[]
+  schoolHours   SchoolHours[]
+  feeStructures FeeStructure[]
+  invoices      Invoice[]
+  notices       Notice[]
+  events        SchoolEvent[]
+  inquiries     Inquiry[]
+  applications  Application[]
+  visitBookings VisitBooking[]
+  broadcasts    SafetyBroadcast[]
 }
+
+// Static catalogue (toddlers, nursery, …). Seeded, admin-editable later.
+model Program {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  ageFrom       Int
+  ageTo         Int
+  durationLabel String
+  tagline       String
+  description   String
+  outcomes      String[]
+  activities    String[]
+  milestones    String[]
+  feePerTerm    Int
+  seatsPerBatch Int
+  emoji         String
+  accent        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Classroom {
+  id          String   @id @default(cuid())
+  name        String
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  programSlug String   @default("toddlers")
+  capacity    Int      @default(15)
+  // Class teacher (Staff). Nullable while a class is between teachers.
+  teacherId   String?
+  teacher     Staff?   @relation("ClassTeacher", fields: [teacherId], references: [id])
+  room        String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  students   Student[]
+  cameras    Camera[]
+  attendance AttendanceRecord[]
+  activities Activity[]
+  notices    Notice[]
+  lessons    Lesson[]
+  staff      StaffClassroom[]
+
+  @@index([branchId])
+  @@index([programSlug])
+}
+
+// ---------------------------------------------------------------------------
+// People — users, staff, students, guardians
+// ---------------------------------------------------------------------------
 
 model User {
   id           String   @id @default(cuid())
@@ -66,92 +392,1056 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  guardianships Guardianship[]
-  accessGrants  CameraAccessGrant[]
-  cctvLogs      CctvViewLog[]
+  staff             Staff?
+  guardian          Guardian?
+  accessGrants      CameraAccessGrant[]
+  cctvLogs          CctvViewLog[]
+  refreshTokens     RefreshToken[]
+  notifications     AppNotification[]
+  notificationPref  NotificationPreference?
+  devices           DeviceToken[]
+  noticeReads       NoticeRead[]
+  activityReactions ActivityReaction[]
+  activityComments  ActivityComment[]
+  messages          Message[]
+  conversations     ConversationMember[]
+  eventRsvps        EventRsvp[]
+  broadcastAcks     BroadcastAck[]
+  pickupAuths       PickupAuthorization[]
 
   @@index([role])
   @@index([branchId])
 }
 
-model Classroom {
-  id        String   @id @default(cuid())
-  name      String
-  ageGroup  String?
-  branchId  String
-  branch    Branch   @relation(fields: [branchId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Long-lived refresh tokens, hashed. The mobile app rotates one of these; the
+// web app gets the same session as an HttpOnly cookie.
+model RefreshToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  // Rotation chain: the token this one replaced, so reuse of a retired token
+  // can be detected and the whole family revoked.
+  replacedBy String?
+  device     String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
 
-  students Student[]
-  cameras  Camera[]
-
-  @@index([branchId])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
-model Student {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  dob         DateTime?
-  active      Boolean  @default(true)
-  branchId    String
-  branch      Branch   @relation(fields: [branchId], references: [id])
-  classroomId String?
-  classroom   Classroom? @relation(fields: [classroomId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Staff {
+  id            String      @id @default(cuid())
+  // Login for this staff member. Null for records kept for HR only.
+  userId        String?     @unique
+  user          User?       @relation(fields: [userId], references: [id])
+  branchId      String
+  branch        Branch      @relation(fields: [branchId], references: [id])
+  name          String
+  email         String      @unique
+  phone         String      @default("")
+  role          Role        @default(TEACHER)
+  designation   String      @default("")
+  qualification String      @default("")
+  joinedOn      DateTime    @default(now())
+  status        StaffStatus @default(ACTIVE)
+  photoEmoji    String      @default("👩‍🏫")
+  salary        Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  guardianships Guardianship[]
+  classrooms      StaffClassroom[]
+  classTeacherOf  Classroom[]        @relation("ClassTeacher")
+  activities      Activity[]
+  attendanceMarks AttendanceRecord[]
+  lessons         Lesson[]
+  reports         ProgressReport[]
+  inquiries       Inquiry[]
 
   @@index([branchId])
+  @@index([role])
+}
+
+// A teacher may float across classrooms; `Classroom.teacherId` is the one who
+// owns the class, this is everyone who works in it.
+model StaffClassroom {
+  staffId     String
+  staff       Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, classroomId])
   @@index([classroomId])
 }
 
-// Parent (User) <-> Student link. A parent may have many children; a child
-// may have many guardians. CCTV access is derived through this relation.
-model Guardianship {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  relation  GuardianRelation @default(GUARDIAN)
-  isPrimary Boolean          @default(false)
-  createdAt DateTime         @default(now())
+model Student {
+  id           String        @id @default(cuid())
+  firstName    String
+  lastName     String
+  admissionNo  String        @unique
+  dob          DateTime
+  gender       Gender        @default(OTHER)
+  branchId     String
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  classroomId  String?
+  classroom    Classroom?    @relation(fields: [classroomId], references: [id])
+  programSlug  String        @default("toddlers")
+  status       StudentStatus @default(ACTIVE)
+  enrolledOn   DateTime      @default(now())
+  photoEmoji   String        @default("🧒")
+  bloodGroup   String        @default("")
+  allergies    String[]
+  medicalNotes String        @default("")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  @@unique([userId, studentId])
+  guardianships     Guardianship[]
+  attendance        AttendanceRecord[]
+  pickupAuths       PickupAuthorization[]
+  activityTags      ActivityTag[]
+  invoices          Invoice[]
+  payments          Payment[]
+  conversations     Conversation[]
+  meetings          Meeting[]
+  reports           ProgressReport[]
+  milestones        Milestone[]
+  gameSessions      GameSession[]
+  journey           JourneyState?
+  artworks          Artwork[]
+  medicalProfile    MedicalProfile?
+  emergencyContacts EmergencyContact[]
+
+  @@index([branchId])
+  @@index([classroomId])
+  @@index([status])
+}
+
+// The contactable adult. Has portal access only when `userId` is set — plenty
+// of guardians (a grandparent who does pickup) never log in.
+model Guardian {
+  id                 String           @id @default(cuid())
+  userId             String?          @unique
+  user               User?            @relation(fields: [userId], references: [id])
+  name               String
+  email              String           @unique
+  phone              String           @default("")
+  relation           GuardianRelation @default(OTHER)
+  occupation         String           @default("")
+  address            String           @default("")
+  canPickup          Boolean          @default(true)
+  isEmergencyContact Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  guardianships Guardianship[]
+}
+
+// Guardian <-> Student. A parent may have many children; a child many
+// guardians. CCTV access is derived through this relation (User -> Guardian ->
+// Guardianship -> Student -> Classroom).
+model Guardianship {
+  id         String   @id @default(cuid())
+  guardianId String
+  guardian   Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([guardianId, studentId])
   @@index([studentId])
 }
 
 // ---------------------------------------------------------------------------
-// CCTV
+// Attendance & pickup
+// ---------------------------------------------------------------------------
+
+model AttendanceRecord {
+  id              String           @id @default(cuid())
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroomId     String
+  classroom       Classroom        @relation(fields: [classroomId], references: [id])
+  // "YYYY-MM-DD" in branch-local time — one record per student per day.
+  date            String
+  status          AttendanceStatus @default(UNMARKED)
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  // Guardian id or free-text name of whoever collected the child.
+  pickedUpBy      String?
+  markedByStaffId String?
+  markedBy        Staff?           @relation(fields: [markedByStaffId], references: [id])
+  note            String           @default("")
+  mood            ChildMood?
+  mealsEaten      MealsEaten?
+  napMinutes      Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([studentId, date])
+  @@index([classroomId, date])
+  @@index([date])
+}
+
+// Single-use pickup code shown in the parent app and scanned at the gate.
+model PickupAuthorization {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  personName      String
+  relation        String   @default("")
+  phone           String   @default("")
+  code            String   @unique
+  // "YYYY-MM-DD" the code is valid on.
+  validOn         String
+  used            Boolean  @default(false)
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@index([studentId, validOn])
+}
+
+// ---------------------------------------------------------------------------
+// Activity feed
+// ---------------------------------------------------------------------------
+
+model Activity {
+  id            String       @id @default(cuid())
+  classroomId   String
+  classroom     Classroom    @relation(fields: [classroomId], references: [id])
+  authorStaffId String
+  author        Staff        @relation(fields: [authorStaffId], references: [id])
+  kind          ActivityKind @default(LEARNING)
+  title         String
+  body          String       @default("")
+  // MediaRef[] — uploaded assets, read as a whole with the post.
+  media         Json         @default("[]")
+  published     Boolean      @default(false)
+  // Teacher-only note, never serialised into a parent-facing response.
+  internalNote  String       @default("")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  taggedStudents ActivityTag[]
+  comments       ActivityComment[]
+  reactions      ActivityReaction[]
+
+  @@index([classroomId, createdAt])
+  @@index([published])
+}
+
+// Which children are in the post — this is what decides which parents see it.
+model ActivityTag {
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, studentId])
+  @@index([studentId])
+}
+
+model ActivityComment {
+  id         String     @id @default(cuid())
+  activityId String
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorName String
+  authorRole AuthorRole @default(PARENT)
+  body       String
+  createdAt  DateTime   @default(now())
+
+  @@index([activityId, createdAt])
+}
+
+model ActivityReaction {
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([activityId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Notices
+// ---------------------------------------------------------------------------
+
+model Notice {
+  id          String         @id @default(cuid())
+  title       String
+  body        String
+  audience    NoticeAudience @default(ALL)
+  classroomId String?
+  classroom   Classroom?     @relation(fields: [classroomId], references: [id])
+  branchId    String?
+  branch      Branch?        @relation(fields: [branchId], references: [id])
+  priority    NoticePriority @default(NORMAL)
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  authorName  String
+  // MediaRef[]
+  attachments Json           @default("[]")
+  pinned      Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  reads NoticeRead[]
+
+  @@index([audience])
+  @@index([publishedAt])
+}
+
+model NoticeRead {
+  noticeId String
+  notice   Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt   DateTime @default(now())
+
+  @@id([noticeId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Messaging
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id                 String   @id @default(cuid())
+  studentId          String
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // Display names cached on the thread so a list renders without joins.
+  parentName         String
+  teacherName        String
+  subject            String   @default("")
+  lastMessageAt      DateTime @default(now())
+  lastMessagePreview String   @default("")
+  unreadForParent    Int      @default(0)
+  unreadForTeacher   Int      @default(0)
+  archived           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  members  ConversationMember[]
+  messages Message[]
+
+  @@index([studentId])
+  @@index([lastMessageAt])
+}
+
+model ConversationMember {
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  senderName     String
+  senderRole     AuthorRole   @default(PARENT)
+  kind           MessageKind  @default(TEXT)
+  body           String       @default("")
+  // Seconds, for VOICE messages.
+  durationSec    Int?
+  // MediaRef | null
+  attachment     Json?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Meeting {
+  id           String        @id @default(cuid())
+  studentId    String
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacherName  String
+  parentName   String
+  mode         MeetingMode   @default(IN_PERSON)
+  scheduledFor DateTime
+  durationMin  Int           @default(15)
+  agenda       String        @default("")
+  status       MeetingStatus @default(REQUESTED)
+  joinUrl      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([scheduledFor])
+}
+
+// ---------------------------------------------------------------------------
+// Fees & payments
+// ---------------------------------------------------------------------------
+
+model FeeStructure {
+  id            String   @id @default(cuid())
+  programSlug   String
+  branchId      String
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  admissionFee  Int      @default(0)
+  termFee       Int      @default(0)
+  transportFee  Int      @default(0)
+  mealFee       Int      @default(0)
+  activityFee   Int      @default(0)
+  termsPerYear  Int      @default(3)
+  lateFeePerDay Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([branchId, programSlug])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  number      String        @unique
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  // Cached for list rendering and for receipts that must survive a rename.
+  studentName String
+  branchId    String
+  branch      Branch        @relation(fields: [branchId], references: [id])
+  term        String
+  // Rupees, integer. `amount` is the invoice total; `paidAmount` never exceeds it.
+  amount      Int
+  paidAmount  Int           @default(0)
+  lateFee     Int           @default(0)
+  dueOn       DateTime
+  issuedOn    DateTime      @default(now())
+  status      InvoiceStatus @default(DRAFT)
+  notes       String        @default("")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lines        InvoiceLine[]
+  payments     Payment[]
+  installments Installment[]
+
+  @@index([studentId])
+  @@index([status])
+  @@index([dueOn])
+}
+
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  label     String
+  amount    Int
+  qty       Int     @default(1)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  amount         Int
+  method         PaymentMethod @default(UPI)
+  reference      String        @default("")
+  paidAt         DateTime      @default(now())
+  receiptNo      String        @unique
+  // Gateway order id (Razorpay in production, mock driver in dev).
+  gatewayOrderId String?       @unique
+  createdAt      DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@index([studentId])
+}
+
+model Installment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  dueOn     DateTime
+  amount    Int
+  paid      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+model SchoolEvent {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  description String    @default("")
+  kind        EventKind @default(CELEBRATION)
+  startsAt    DateTime
+  endsAt      DateTime
+  venue       String    @default("")
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id])
+  coverEmoji  String    @default("🎉")
+  // MediaRef[]
+  media       Json      @default("[]")
+  rsvpEnabled Boolean   @default(true)
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  rsvps EventRsvp[]
+
+  @@index([startsAt])
+  @@index([published])
+}
+
+model EventRsvp {
+  eventId   String
+  event     SchoolEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  guests    Int         @default(1)
+  createdAt DateTime    @default(now())
+
+  @@id([eventId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Admissions
+// ---------------------------------------------------------------------------
+
+model Inquiry {
+  id                String        @id @default(cuid())
+  parentName        String
+  email             String
+  phone             String
+  childName         String
+  childDob          DateTime
+  programSlug       String
+  branchId          String
+  branch            Branch        @relation(fields: [branchId], references: [id])
+  source            InquirySource @default(WEBSITE)
+  stage             InquiryStage  @default(NEW)
+  message           String        @default("")
+  assignedToStaffId String?
+  assignedTo        Staff?        @relation(fields: [assignedToStaffId], references: [id])
+  followUpOn        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  notes        InquiryNote[]
+  applications Application[]
+
+  @@index([stage])
+  @@index([branchId])
+}
+
+model InquiryNote {
+  id        String   @id @default(cuid())
+  inquiryId String
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  body      String
+  author    String
+  createdAt DateTime @default(now())
+
+  @@index([inquiryId])
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  inquiryId     String?
+  inquiry       Inquiry?          @relation(fields: [inquiryId], references: [id])
+  applicationNo String            @unique
+  childName     String
+  childDob      DateTime
+  programSlug   String
+  branchId      String
+  branch        Branch            @relation(fields: [branchId], references: [id])
+  parentName    String
+  email         String
+  phone         String
+  address       String            @default("")
+  status        ApplicationStatus @default(SUBMITTED)
+  // [{ id, label, uploaded, fileName? }] — a checklist, always read whole.
+  documents     Json              @default("[]")
+  submittedOn   DateTime          @default(now())
+  decisionNote  String            @default("")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([status])
+  @@index([branchId])
+}
+
+model VisitBooking {
+  id         String        @id @default(cuid())
+  parentName String
+  phone      String
+  email      String
+  branchId   String
+  branch     Branch        @relation(fields: [branchId], references: [id])
+  // "YYYY-MM-DD" / "HH:mm" — slots are a fixed grid, not free datetimes.
+  date       String
+  slot       String
+  childAge   Int           @default(3)
+  mode       VisitMode     @default(CAMPUS)
+  status     BookingStatus @default(REQUESTED)
+  note       String        @default("")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([branchId, date, slot])
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Curriculum, lessons & progress
+// ---------------------------------------------------------------------------
+
+model Lesson {
+  id            String       @id @default(cuid())
+  title         String
+  programSlug   String
+  classroomId   String?
+  classroom     Classroom?   @relation(fields: [classroomId], references: [id])
+  // "YYYY-MM-DD"
+  date          String
+  slot          LessonSlot   @default(MORNING)
+  objective     String       @default("")
+  materials     String[]
+  steps         String[]
+  skillTags     String[]
+  status        LessonStatus @default(PLANNED)
+  authorStaffId String
+  author        Staff        @relation(fields: [authorStaffId], references: [id])
+  homework      String       @default("")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([classroomId, date])
+  @@index([programSlug])
+}
+
+model CurriculumUnit {
+  id          String   @id @default(cuid())
+  programSlug String
+  term        Int
+  title       String
+  focus       String   @default("")
+  weeks       Int      @default(4)
+  outcomes    String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([programSlug, term])
+}
+
+model ProgressReport {
+  id            String    @id @default(cuid())
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  term          String
+  // Record<SkillKey, number> — 0..100 per skill, always read as one card.
+  scores        Json
+  teacherRemark String    @default("")
+  strengths     String[]
+  focusAreas    String[]
+  attendancePct Int       @default(0)
+  publishedAt   DateTime?
+  authorStaffId String
+  author        Staff     @relation(fields: [authorStaffId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([studentId, term])
+  @@index([publishedAt])
+}
+
+model Milestone {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  label      String
+  skill      SkillKey @default(cognitive)
+  achievedOn DateTime
+  note       String   @default("")
+  emoji      String   @default("⭐")
+  createdAt  DateTime @default(now())
+
+  @@index([studentId, achievedOn])
+}
+
+// ---------------------------------------------------------------------------
+// Kids zone
+// ---------------------------------------------------------------------------
+
+model Game {
+  slug         String     @id
+  title        String
+  tagline      String     @default("")
+  // "2-3" .. "5-6" — not an enum because the values aren't identifiers.
+  ageTier      String
+  engine       GameEngine
+  emoji        String     @default("🎮")
+  accent       String     @default("blue")
+  skill        SkillKey   @default(cognitive)
+  maxStars     Int        @default(3)
+  instructions String     @default("")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions GameSession[]
+
+  @@index([ageTier])
+}
+
+model GameSession {
+  id          String   @id @default(cuid())
+  gameSlug    String
+  game        Game     @relation(fields: [gameSlug], references: [slug], onDelete: Cascade)
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score       Int      @default(0)
+  stars       Int      @default(0)
+  durationSec Int      @default(0)
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId, createdAt])
+  @@index([gameSlug])
+}
+
+model Story {
+  id        String   @id
+  title     String
+  moral     String   @default("")
+  ageTier   String
+  emoji     String   @default("📖")
+  accent    String   @default("magenta")
+  minutes   Int      @default(4)
+  // [{ text, emoji }] — the pages of the story.
+  pages     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Badge {
+  key           String   @id
+  label         String
+  description   String   @default("")
+  emoji         String   @default("🏅")
+  requiredStars Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+// One row per child: the adventure-map state the kids zone reads and writes.
+model JourneyState {
+  studentId       String    @id
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  stars           Int       @default(0)
+  level           Int       @default(1)
+  streakDays      Int       @default(0)
+  // "YYYY-MM-DD" of the last play — drives the streak.
+  lastPlayedOn    String?
+  unlockedBadges  String[]
+  completedGames  String[]
+  finishedStories String[]
+  mascot          MascotKey @default(kiki)
+  updatedAt       DateTime  @updatedAt
+}
+
+model Artwork {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  title     String   @default("My drawing")
+  // data-URL PNG from the drawing canvas (moves to object storage on upload).
+  dataUrl   String
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// CMS
+// ---------------------------------------------------------------------------
+
+model CmsPage {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  heroHeading    String     @default("")
+  heroSub        String     @default("")
+  seoTitle       String     @default("")
+  seoDescription String     @default("")
+  status         PageStatus @default(DRAFT)
+  // [{ id, heading, body }]
+  sections       Json       @default("[]")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model BlogPost {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  excerpt     String     @default("")
+  body        String     @default("")
+  category    String     @default("")
+  tags        String[]
+  author      String     @default("")
+  coverEmoji  String     @default("📝")
+  readMinutes Int        @default(3)
+  status      PageStatus @default(DRAFT)
+  publishedAt DateTime?
+  views       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+model Banner {
+  id        String    @id @default(cuid())
+  title     String
+  subtitle  String    @default("")
+  ctaLabel  String    @default("")
+  ctaHref   String    @default("")
+  accent    String    @default("orange")
+  active    Boolean   @default(false)
+  startsOn  DateTime?
+  endsOn    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model MediaAsset {
+  id        String    @id @default(cuid())
+  label     String
+  kind      MediaKind @default(image)
+  category  String    @default("")
+  sizeKb    Int       @default(0)
+  emoji     String    @default("🖼️")
+  url       String    @default("")
+  usedOn    String[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([category])
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  parentName String
+  childName  String   @default("")
+  relation   String   @default("")
+  rating     Int      @default(5)
+  quote      String
+  emoji      String   @default("💬")
+  videoUrl   String?
+  published  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model AppNotification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind @default(SYSTEM)
+  title     String
+  body      String           @default("")
+  href      String?
+  read      Boolean          @default(false)
+  emoji     String           @default("🔔")
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  userId     String   @id
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Record<NotificationChannel, boolean>
+  channels   Json     @default("{}")
+  mutedKinds String[]
+  // { from: "HH:mm", to: "HH:mm" } | null
+  quietHours Json?
+  updatedAt  DateTime @updatedAt
+}
+
+model DeviceToken {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // The Expo/FCM push token. Unique so re-registering a device replaces it.
+  token      String?        @unique
+  platform   DevicePlatform @default(WEB)
+  label      String         @default("")
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Safety
+// ---------------------------------------------------------------------------
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name      String
+  relation  String   @default("")
+  phone     String
+  priority  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId, priority])
+}
+
+model MedicalProfile {
+  studentId   String   @id
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  bloodGroup  String   @default("")
+  allergies   String[]
+  conditions  String[]
+  medications String[]
+  doctorName  String   @default("")
+  doctorPhone String   @default("")
+  insuranceNo String   @default("")
+  notes       String   @default("")
+  updatedAt   DateTime @updatedAt
+}
+
+model SafetyBroadcast {
+  id         String            @id @default(cuid())
+  title      String
+  body       String
+  severity   BroadcastSeverity @default(INFO)
+  branchId   String?
+  branch     Branch?           @relation(fields: [branchId], references: [id])
+  sentByName String
+  createdAt  DateTime          @default(now())
+
+  acks BroadcastAck[]
+
+  @@index([createdAt])
+}
+
+model BroadcastAck {
+  broadcastId String
+  broadcast   SafetyBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ackedAt     DateTime        @default(now())
+
+  @@id([broadcastId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Admin ops
+// ---------------------------------------------------------------------------
+
+model AuditEntry {
+  id        String   @id @default(cuid())
+  actorName String
+  actorRole Role
+  action    String
+  target    String   @default("")
+  detail    String   @default("")
+  ip        String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+// Editable permission set per role (/admin/roles). The four rows are seeded and
+// `system` ones cannot be deleted.
+model RoleDefinition {
+  role        Role     @id
+  label       String
+  description String   @default("")
+  permissions String[]
+  system      Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
+// Single row (id = "singleton"): school-wide settings and feature flags.
+model SchoolSettings {
+  id            String   @id @default("singleton")
+  schoolName    String
+  tagline       String   @default("")
+  supportEmail  String   @default("")
+  supportPhone  String   @default("")
+  whatsapp      String   @default("")
+  address       String   @default("")
+  academicYear  String   @default("")
+  currency      String   @default("INR")
+  timezone      String   @default("Asia/Kolkata")
+  locale        String   @default("en")
+  // { cctv, kidsZone, onlinePayments, messaging, admissionsOnline, seasonalTheme }
+  features      Json     @default("{}")
+  seasonalTheme String   @default("none")
+  updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// CCTV — control plane. The media plane (MediaMTX) never touches this DB;
+// it only calls /api/cctv/authorize. See docs/erp-cctv.md.
 // ---------------------------------------------------------------------------
 
 model Camera {
-  id            String   @id @default(cuid())
-  name          String
-  branchId      String
-  branch        Branch   @relation(fields: [branchId], references: [id])
+  id          String     @id @default(cuid())
+  name        String
+  branchId    String
+  branch      Branch     @relation(fields: [branchId], references: [id])
   // Camera physically covers this classroom; parents of students in this
   // classroom get access (subject to the checks below).
-  classroomId   String?
-  classroom     Classroom? @relation(fields: [classroomId], references: [id])
+  classroomId String?
+  classroom   Classroom? @relation(fields: [classroomId], references: [id])
 
   // MediaMTX path this feed is published at (e.g. "classroom-a"). The browser
   // opens WHEP against MEDIAMTX_WHEP_URL/<streamPath>/whep.
-  streamPath    String   @unique
+  streamPath String @unique
   // Source RTSP URL (may embed credentials). SERVER-SIDE ONLY — never sent to a
   // browser. MediaMTX pulls from here; parents only ever get a view token.
-  rtspUrl       String
+  rtspUrl    String
 
   // Global on/off (admin kill-switch). When false nobody can view.
-  enabled       Boolean  @default(true)
+  enabled        Boolean @default(true)
   // Whether parents (vs. staff only) may view this camera at all.
   parentViewable Boolean @default(true)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   accessGrants CameraAccessGrant[]
   cctvLogs     CctvViewLog[]

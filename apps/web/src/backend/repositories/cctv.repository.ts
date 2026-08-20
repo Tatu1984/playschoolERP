@@ -41,8 +41,11 @@ export const cctvRepository = {
     classroomIds: string[];
     branchIds: string[];
   }> {
+    // A login reaches its children through its Guardian record: plenty of
+    // guardians (a grandparent who only does pickup) have no login at all, so
+    // the User -> Guardian hop is what separates "is family" from "can sign in".
     const rows = await prisma.guardianship.findMany({
-      where: { userId },
+      where: { guardian: { userId } },
       select: { student: { select: { classroomId: true, branchId: true } } },
     });
     const classroomIds = new Set<string>();

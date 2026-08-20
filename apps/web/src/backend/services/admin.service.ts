@@ -35,7 +35,7 @@ export const adminService = {
     const since = startOfTodayUTC();
     const [students, cameras, camerasEnabled, staff, parents, viewsToday, deniedToday] =
       await Promise.all([
-        prisma.student.count({ where: { active: true } }),
+        prisma.student.count({ where: { status: "ACTIVE" } }),
         prisma.camera.count(),
         prisma.camera.count({ where: { enabled: true } }),
         prisma.user.count({ where: { role: { in: STAFF_ROLES }, active: true } }),
