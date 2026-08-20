@@ -1,5 +1,5 @@
 import type { Entity, ID, ISODate } from "./common.types";
-import type { Role } from "@/shared/constants/roles";
+import type { Role } from "../constants/roles";
 
 // ---------------------------------------------------------------- notifications
 

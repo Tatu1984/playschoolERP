@@ -1,4 +1,4 @@
-import type { Role } from "@/shared/constants/roles";
+import type { Role } from "../constants/roles";
 
 /** User shape safe to send to the client (no passwordHash). */
 export interface SafeUser {

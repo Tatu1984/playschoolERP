@@ -19,6 +19,9 @@
       }
     ],
     "paths": {
+      // `@/shared/*` resolves into the workspace package so the 215 existing
+      // imports keep working while the source lives in packages/shared.
+      "@/shared/*": ["../../packages/shared/src/*"],
       "@/*": ["./src/*"]
     }
   },

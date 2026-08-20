@@ -10,10 +10,10 @@ import type {
   RoleDefinition,
   SafetyBroadcast,
   SchoolSettings,
-} from "@/shared/types/ops.types";
-import { ROLES } from "@/shared/constants/roles";
-import { PERMISSIONS } from "@/shared/constants/permissions";
-import { daysAgo, hoursAgo, minutesAgo } from "@/shared/utils/date.util";
+} from "../types/ops.types";
+import { ROLES } from "../constants/roles";
+import { PERMISSIONS } from "../constants/permissions";
+import { daysAgo, hoursAgo, minutesAgo } from "../utils/date.util";
 import { STUDENTS } from "./school.fixture";
 
 export const NOTIFICATIONS: AppNotification[] = [

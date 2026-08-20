@@ -9,9 +9,9 @@ import type {
   ProgressReport,
   SkillKey,
   Story,
-} from "@/shared/types/learning.types";
-import { addDays, dateKey, daysAgo, today } from "@/shared/utils/date.util";
-import { seeded } from "@/shared/utils/common.util";
+} from "../types/learning.types";
+import { addDays, dateKey, daysAgo, today } from "../utils/date.util";
+import { seeded } from "../utils/common.util";
 import { STUDENTS } from "./school.fixture";
 
 // --------------------------------------------------------------- lessons

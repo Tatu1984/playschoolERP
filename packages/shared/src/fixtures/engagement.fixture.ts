@@ -12,10 +12,10 @@ import type {
   Payment,
   SchoolEvent,
   VisitBooking,
-} from "@/shared/types/engagement.types";
-import type { AttendanceRecord, ChildMood } from "@/shared/types/school.types";
-import { addDays, dateKey, daysAgo, daysAhead, hoursAgo, today } from "@/shared/utils/date.util";
-import { seeded } from "@/shared/utils/common.util";
+} from "../types/engagement.types";
+import type { AttendanceRecord, ChildMood } from "../types/school.types";
+import { addDays, dateKey, daysAgo, daysAhead, hoursAgo, today } from "../utils/date.util";
+import { seeded } from "../utils/common.util";
 import { CLASSROOMS, STUDENTS } from "./school.fixture";
 
 // --------------------------------------------------------------- attendance

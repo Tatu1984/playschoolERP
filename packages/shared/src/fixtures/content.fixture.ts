@@ -8,7 +8,7 @@ import type {
   CmsPage,
   MediaAsset,
   Testimonial,
-} from "@/shared/types/learning.types";
+} from "../types/learning.types";
 
 export const CMS_PAGES: CmsPage[] = [
   {

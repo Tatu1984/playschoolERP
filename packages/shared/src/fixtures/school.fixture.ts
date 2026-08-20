@@ -13,9 +13,9 @@ import type {
   ProgramSlug,
   Staff,
   Student,
-} from "@/shared/types/school.types";
-import { ROLES } from "@/shared/constants/roles";
-import { daysAgo } from "@/shared/utils/date.util";
+} from "../types/school.types";
+import { ROLES } from "../constants/roles";
+import { daysAgo } from "../utils/date.util";
 
 export const BRANCHES: Branch[] = [
   {

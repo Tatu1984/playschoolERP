@@ -28,7 +28,7 @@ import {
   outstandingOf,
   rosterOf,
 } from "../../src/frontend/store/queries";
-import { dateKey, nowIso, today } from "../../src/shared/utils/date.util";
+import { dateKey, nowIso, today } from "@/shared/utils/date.util";
 
 let pass = 0;
 let fail = 0;

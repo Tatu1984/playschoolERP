@@ -1,4 +1,4 @@
-import type { ISODate } from "@/shared/types/common.types";
+import type { ISODate } from "../types/common.types";
 
 export const MS_DAY = 86_400_000;
 
