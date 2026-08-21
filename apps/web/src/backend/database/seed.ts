@@ -600,7 +600,7 @@ async function main() {
       email: q.email,
       phone: q.phone,
       childName: q.childName,
-      childDob: dReq(q.childDob),
+      childDob: d(q.childDob),
       programSlug: q.programSlug,
       branchId: q.branchId,
       source: q.source,

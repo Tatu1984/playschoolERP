@@ -214,7 +214,8 @@ export interface Inquiry extends Entity {
   email: string;
   phone: string;
   childName: string;
-  childDob: ISODate;
+  /** Null when the enquiry came in without one — a lead, not a form. */
+  childDob: ISODate | null;
   programSlug: ProgramSlug;
   branchId: ID;
   source: InquirySource;

@@ -931,7 +931,9 @@ model Inquiry {
   email             String
   phone             String
   childName         String
-  childDob          DateTime
+  // Nullable: a website enquiry is a lead, and a parent who has only left a
+  // name and a number has still told us enough to call them back.
+  childDob          DateTime?
   programSlug       String
   branchId          String
   branch            Branch        @relation(fields: [branchId], references: [id])

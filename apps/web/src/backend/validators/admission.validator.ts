@@ -30,12 +30,18 @@ export const updateEventSchema = createEventSchema.partial();
 
 export const rsvpSchema = z.object({ guests: z.number().int().min(0).max(10).default(1) });
 
+/**
+ * An enquiry is a lead, not a form to be completed. A parent who types their
+ * name and a phone number has told us enough to call them back, and rejecting
+ * that for want of an email address loses the enrolment. Only the two fields
+ * the form itself insists on are required here.
+ */
 export const createInquirySchema = z.object({
   parentName: z.string().min(2),
-  email: z.email(),
   phone: z.string().min(6),
-  childName: z.string().min(1),
-  childDob: z.iso.datetime().or(dateKeyString),
+  email: z.email().or(z.literal("")).default(""),
+  childName: z.string().max(120).default(""),
+  childDob: z.iso.datetime().or(dateKeyString).optional(),
   programSlug,
   branchId: z.string().min(1),
   message: z.string().max(2000).default(""),

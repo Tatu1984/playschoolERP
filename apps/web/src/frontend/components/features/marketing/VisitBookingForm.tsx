@@ -1,32 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { CalendarCheck, Clock, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useErpStore } from "@/frontend/store/erpStore";
+import { get, post } from "@/frontend/api/client";
+import { usePublicSite } from "@/frontend/hooks/usePublicSite";
 import { SelectField, TextField, TextareaField } from "@/frontend/components/ui/Field";
-import { addDays, dateKey, nowIso, today } from "@/shared/utils/date.util";
-import { newId } from "@/shared/utils/common.util";
+import { addDays, dateKey, today } from "@/shared/utils/date.util";
 import { formatDateShort } from "@/frontend/utils/formatters";
 import { cn } from "@/lib/utils";
 
-const SLOTS = ["10:00", "10:30", "11:00", "11:30", "12:00", "16:00", "16:30", "17:00"];
-
 /** Visit / video-counselling booking (SoW §7.5 visit-bookings + counseling). */
 export function VisitBookingForm() {
-  const branches = useErpStore((s) => s.branches);
-  const existing = useErpStore((s) => s.visitBookings);
-  const addItem = useErpStore((s) => s.addItem);
+  const { branches } = usePublicSite();
 
   const [booked, setBooked] = useState<{ date: string; slot: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  /**
+   * The visiting times, and which are gone, both come from the server. Keeping
+   * a copy of the grid here is how a form ends up offering 5 pm when the school
+   * stopped doing 5 pm — the endpoint that accepts the booking owns the list.
+   *
+   * The answer is stored against the campus and day it was asked about, so a
+   * reply that lands after the parent has moved to another day is ignored
+   * rather than drawn under the wrong heading.
+   */
+  const [fetched, setFetched] = useState<{
+    key: string;
+    slots: { slot: string; taken: boolean }[];
+  } | null>(null);
   const [form, setForm] = useState({
     parentName: "",
     phone: "",
     email: "",
-    branchId: "br_kathgola",
+    branchId: "",
     childAge: "3",
     mode: "CAMPUS" as "CAMPUS" | "VIDEO",
     note: "",
@@ -34,14 +44,48 @@ export function VisitBookingForm() {
   const [date, setDate] = useState(dateKey(addDays(today(), 1)));
   const [slot, setSlot] = useState("");
 
+  // Until the campuses arrive, and until the parent picks one, the first campus
+  // stands in. Naming a branch id here instead would tie the public form to the
+  // ids one particular database happens to have been seeded with.
+  const branchId = form.branchId || branches[0]?.id || "";
+
   // Next 10 days, Sundays closed.
   const days = Array.from({ length: 10 }, (_, i) => addDays(today(), i + 1)).filter((d) => d.getDay() !== 0);
 
+  const slotKey = `${branchId}|${date}`;
+
+  // Which slots are gone is a question only the server can answer — another
+  // family may have taken one thirty seconds ago.
+  useEffect(() => {
+    if (!branchId) return;
+    let alive = true;
+    get<{ slots: { slot: string; taken: boolean }[] }>(
+      `/admissions/slots?branchId=${encodeURIComponent(branchId)}&date=${date}`,
+    )
+      .then((r) => {
+        if (alive) setFetched({ key: `${branchId}|${date}`, slots: r.slots });
+      })
+      .catch(() => {
+        // An empty list is how the grid says "we asked and got nothing back".
+        if (alive) setFetched({ key: `${branchId}|${date}`, slots: [] });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [branchId, date]);
+
+  /**
+   * `null` while we are still waiting on this day, which is not the same thing
+   * as an answer of nothing — the two say different things to a parent staring
+   * at an empty grid.
+   */
+  const slots = fetched?.key === slotKey ? fetched.slots : null;
+
   function isTaken(d: string, s: string): boolean {
-    return existing.some((v) => v.date === d && v.slot === s && v.status !== "CANCELLED" && v.branchId === form.branchId);
+    return d === date && (slots ?? []).some((x) => x.slot === s && x.taken);
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.parentName.trim() || !form.phone.trim()) {
       toast.error("Please add your name and phone number");
@@ -51,22 +95,34 @@ export function VisitBookingForm() {
       toast.error("Pick a time slot");
       return;
     }
-    addItem("visitBookings", {
-      id: newId("vb"),
-      parentName: form.parentName.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      branchId: form.branchId,
-      date,
-      slot,
-      childAge: Number(form.childAge) || 3,
-      mode: form.mode,
-      status: "REQUESTED",
-      note: form.note.trim(),
-      createdAt: nowIso(),
-    });
-    setBooked({ date, slot });
-    toast.success("Visit requested — we'll confirm by phone");
+    setBusy(true);
+    try {
+      await post("/admissions/visit-bookings", {
+        parentName: form.parentName.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        branchId,
+        date,
+        slot,
+        childAge: Number(form.childAge) || 3,
+        mode: form.mode,
+        note: form.note.trim(),
+      });
+      setBooked({ date, slot });
+      toast.success("Visit requested — we'll confirm by phone");
+    } catch (err) {
+      // The commonest failure here is a slot going in the seconds between
+      // loading the grid and pressing the button, so refresh it as we complain.
+      toast.error(err instanceof Error ? err.message : "We could not book that — please try again");
+      setFetched((prev) =>
+        prev === null
+          ? prev
+          : { ...prev, slots: prev.slots.map((x) => (x.slot === slot ? { ...x, taken: true } : x)) },
+      );
+      setSlot("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (booked) {
@@ -78,7 +134,7 @@ export function VisitBookingForm() {
         </h2>
         <p className="mt-2 text-sm text-ck-navy/70">
           {formatDateShort(booked.date)} at {booked.slot} ·{" "}
-          {form.mode === "VIDEO" ? "video walkthrough" : branches.find((b) => b.id === form.branchId)?.name}
+          {form.mode === "VIDEO" ? "video walkthrough" : branches.find((b) => b.id === branchId)?.name}
         </p>
         <p className="mt-2 text-sm text-ck-navy/70">
           The office will call {form.phone} to confirm. Bring your child if you can — the best visits are the noisy ones.
@@ -109,7 +165,7 @@ export function VisitBookingForm() {
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField
               label="Which campus"
-              value={form.branchId}
+              value={branchId}
               onChange={(v) => {
                 setForm({ ...form, branchId: v });
                 setSlot("");
@@ -165,7 +221,18 @@ export function VisitBookingForm() {
         </div>
 
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {SLOTS.map((s) => {
+          {slots === null && (
+            <p className="col-span-full py-2 text-sm text-muted-foreground">
+              Loading times for this day…
+            </p>
+          )}
+          {slots?.length === 0 && (
+            <p className="col-span-full py-2 text-sm text-muted-foreground">
+              We couldn&apos;t load the visiting times — please call us on 70037 08969 and
+              we&apos;ll book you in.
+            </p>
+          )}
+          {(slots ?? []).map(({ slot: s }) => {
             const taken = isTaken(date, s);
             return (
               <button
@@ -208,7 +275,7 @@ export function VisitBookingForm() {
             )}
             <Badge variant="outline">{form.mode === "VIDEO" ? "Video" : "Campus"}</Badge>
           </div>
-          <Button type="submit" className="rounded-xl px-6 py-5 font-bold">
+          <Button type="submit" disabled={busy} className="rounded-xl px-6 py-5 font-bold">
             Request this slot
           </Button>
         </div>

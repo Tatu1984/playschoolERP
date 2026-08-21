@@ -109,9 +109,10 @@ export const admissionService = {
    * decided here rather than accepted from the body.
    */
   async createInquiry(input: CreateInquiryInput, source: Inquiry["source"] = "WEBSITE"): Promise<Inquiry> {
+    const { childDob, ...rest } = input;
     const row = await engagementRepository.createInquiry({
-      ...input,
-      childDob: new Date(input.childDob),
+      ...rest,
+      childDob: childDob ? new Date(childDob) : null,
       source,
       stage: "NEW",
     });
@@ -215,8 +216,17 @@ export const admissionService = {
     try {
       return toVisitBooking(await engagementRepository.createVisit({ ...input, status: "REQUESTED" }));
     } catch {
-      // The only way the insert fails is the unique slot index.
-      throw new AppError("Someone just took that slot — please pick another", 409, "slot_taken");
+      // The only way the insert fails is the unique slot index. That index does
+      // not know about status, so a cancelled booking goes on holding its row
+      // even though `slotsOn` rightly shows the slot as free again — leaving
+      // the parent a slot the grid offers and the server always refuses.
+      // Cancelling has to really give the time back, so the dead row is taken
+      // over by whoever asks for it next.
+      const held = await engagementRepository.findVisitSlot(input.branchId, input.date, input.slot);
+      if (!held || held.status !== "CANCELLED") {
+        throw new AppError("Someone just took that slot — please pick another", 409, "slot_taken");
+      }
+      return toVisitBooking(await engagementRepository.updateVisit(held.id, { ...input, status: "REQUESTED" }));
     }
   },
 

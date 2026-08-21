@@ -6,13 +6,13 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2, FileUp, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useErpStore } from "@/frontend/store/erpStore";
+import { post } from "@/frontend/api/client";
+import { usePublicSite } from "@/frontend/hooks/usePublicSite";
 import { Stepper } from "@/frontend/components/ui/Bits";
 import { SelectField, TextField, TextareaField } from "@/frontend/components/ui/Field";
-import { CATALOGUE } from "@/shared/fixtures";
 import type { ProgramSlug } from "@/shared/types/school.types";
-import { formatMoney, newId } from "@/shared/utils/common.util";
-import { nowIso } from "@/shared/utils/date.util";
+import type { Application } from "@/shared/types/engagement.types";
+import { formatMoney } from "@/shared/utils/common.util";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Child", "Parent", "Documents", "Review"];
@@ -21,11 +21,10 @@ const DOCS = ["Birth certificate", "Aadhaar copy", "Vaccination record", "Passpo
 
 /** Four-step online application (SoW §7.5 `POST /api/admissions/applications`). */
 export function ApplicationWizard() {
-  const branches = useErpStore((s) => s.branches);
-  const feeStructures = useErpStore((s) => s.feeStructures);
-  const addItem = useErpStore((s) => s.addItem);
+  const { branches, programs, feeStructures } = usePublicSite();
 
   const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<string[]>([]);
   const [form, setForm] = useState({
@@ -33,7 +32,7 @@ export function ApplicationWizard() {
     childDob: "",
     gender: "M",
     programSlug: "nursery" as ProgramSlug,
-    branchId: "br_kathgola",
+    branchId: "",
     parentName: "",
     relation: "MOTHER",
     phone: "",
@@ -46,8 +45,13 @@ export function ApplicationWizard() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  const program = CATALOGUE.programs.find((p) => p.slug === form.programSlug);
-  const structure = feeStructures.find((f) => f.programSlug === form.programSlug && f.branchId === form.branchId);
+  // Until the campuses arrive, and until the applicant picks one, the first
+  // campus stands in — the fee summary on the review step needs a real branch
+  // to price against, and a seeded id hardcoded here would not be one.
+  const branchId = form.branchId || branches[0]?.id || "";
+
+  const program = programs.find((p) => p.slug === form.programSlug);
+  const structure = feeStructures.find((f) => f.programSlug === form.programSlug && f.branchId === branchId);
 
   function validate(current: number): boolean {
     if (current === 0 && (!form.childName.trim() || !form.childDob)) {
@@ -61,33 +65,38 @@ export function ApplicationWizard() {
     return true;
   }
 
-  function submit() {
-    const applicationNo = `APP/2026/${400 + Math.floor(Math.random() * 500)}`;
-    addItem("applications", {
-      id: newId("app"),
-      inquiryId: null,
-      applicationNo,
-      childName: form.childName.trim(),
-      childDob: new Date(form.childDob).toISOString(),
-      programSlug: form.programSlug,
-      branchId: form.branchId,
-      parentName: form.parentName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      address: form.address.trim(),
-      status: "SUBMITTED",
-      documents: DOCS.map((label, i) => ({
-        id: `doc_${i}`,
-        label,
-        uploaded: uploaded.includes(label),
-        fileName: uploaded.includes(label) ? `${label.toLowerCase().replace(/ /g, "-")}.pdf` : undefined,
-      })),
-      submittedOn: nowIso(),
-      decisionNote: "",
-      createdAt: nowIso(),
-    });
-    setDone(applicationNo);
-    toast.success("Application submitted!");
+  async function submit() {
+    setBusy(true);
+    try {
+      // The application number is the school's to issue, not the browser's —
+      // it goes on paperwork and has to be unique across every applicant.
+      const { application } = await post<{ application: Application }>("/admissions/applications", {
+        inquiryId: null,
+        childName: form.childName.trim(),
+        childDob: new Date(form.childDob).toISOString(),
+        programSlug: form.programSlug,
+        branchId,
+        parentName: form.parentName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        documents: DOCS.map((label, i) => ({
+          id: `doc_${i}`,
+          label,
+          uploaded: uploaded.includes(label),
+          ...(uploaded.includes(label)
+            ? { fileName: `${label.toLowerCase().replace(/ /g, "-")}.pdf` }
+            : {}),
+        })),
+      });
+      setDone(application.applicationNo);
+      toast.success("Application submitted!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "We could not submit that — please try again");
+      return;
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (done) {
@@ -151,11 +160,11 @@ export function ApplicationWizard() {
                 label="Program"
                 value={form.programSlug}
                 onChange={(v) => set("programSlug", v as ProgramSlug)}
-                options={CATALOGUE.programs.map((p) => ({ value: p.slug, label: `${p.emoji} ${p.name} (${p.ageFrom}–${p.ageTo} yrs)` }))}
+                options={programs.map((p) => ({ value: p.slug, label: `${p.emoji} ${p.name} (${p.ageFrom}–${p.ageTo} yrs)` }))}
               />
               <SelectField
                 label="Branch"
-                value={form.branchId}
+                value={branchId}
                 onChange={(v) => set("branchId", v)}
                 options={branches.map((b) => ({ value: b.id, label: b.name.replace("Climb Kiddo — ", "") }))}
               />
@@ -237,7 +246,7 @@ export function ApplicationWizard() {
                 ["Child", form.childName || "—"],
                 ["Date of birth", form.childDob || "—"],
                 ["Program", program?.name ?? "—"],
-                ["Branch", branches.find((b) => b.id === form.branchId)?.name ?? "—"],
+                ["Branch", branches.find((b) => b.id === branchId)?.name ?? "—"],
                 ["Parent", `${form.parentName || "—"} (${form.relation.toLowerCase()})`],
                 ["Phone", form.phone || "—"],
                 ["Email", form.email || "—"],
@@ -286,7 +295,7 @@ export function ApplicationWizard() {
               Continue <ArrowRight />
             </Button>
           ) : (
-            <Button type="button" className="rounded-xl font-bold" onClick={submit}>
+            <Button disabled={busy} type="button" className="rounded-xl font-bold" onClick={submit}>
               Submit application
             </Button>
           )}

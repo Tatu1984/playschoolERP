@@ -4,18 +4,19 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useErpStore } from "@/frontend/store/erpStore";
+import { post } from "@/frontend/api/client";
+import { usePublicSite } from "@/frontend/hooks/usePublicSite";
 import { SelectField, TextField, TextareaField } from "@/frontend/components/ui/Field";
-import { CATALOGUE } from "@/shared/fixtures";
 import type { ProgramSlug } from "@/shared/types/school.types";
-import { newId } from "@/shared/utils/common.util";
-import { nowIso } from "@/shared/utils/date.util";
 import { cn } from "@/lib/utils";
 
 /**
- * Public enquiry capture (SoW §7.18 `POST /api/public/contact`). Today it writes
- * straight into the demo store, which is exactly what the admissions pipeline
- * reads — so a website enquiry really does appear in /admin/admissions.
+ * Public enquiry capture (SoW §7.18 `POST /api/public/contact`). The endpoint
+ * drops the lead into the pipeline the office actually works from — an enquiry
+ * sent here shows up in /admin/admissions.
+ *
+ * Nothing about the pipeline is sent from the browser: the stage and the lead
+ * source are the server's to decide, because anyone can post to this URL.
  */
 export function EnquiryForm({
   compact = false,
@@ -28,8 +29,7 @@ export function EnquiryForm({
   blurb?: string;
   className?: string;
 }) {
-  const branches = useErpStore((s) => s.branches);
-  const addItem = useErpStore((s) => s.addItem);
+  const { branches, programs } = usePublicSite();
 
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,7 +40,7 @@ export function EnquiryForm({
     childName: "",
     childAge: "",
     programSlug: "nursery" as ProgramSlug,
-    branchId: "br_kathgola",
+    branchId: "",
     message: "",
   });
 
@@ -48,36 +48,47 @@ export function EnquiryForm({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  function submit(e: React.FormEvent) {
+  // Until the campuses arrive, and until the parent picks one, the first campus
+  // stands in. Naming a branch id here instead would tie the public form to the
+  // ids one particular database happens to have been seeded with.
+  const branchId = form.branchId || branches[0]?.id || "";
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.parentName.trim() || !form.phone.trim()) {
       toast.error("Please add your name and phone number");
       return;
     }
     setBusy(true);
-    const months = Math.round((Number(form.childAge) || 3) * 12);
-    addItem("inquiries", {
-      id: newId("inq"),
-      parentName: form.parentName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      childName: form.childName.trim(),
-      childDob: new Date(Date.now() - months * 30.4 * 86_400_000).toISOString(),
-      programSlug: form.programSlug,
-      branchId: form.branchId,
-      source: "WEBSITE",
-      stage: "NEW",
-      message: form.message.trim(),
-      assignedToStaffId: null,
-      followUpOn: null,
-      notes: [],
-      createdAt: nowIso(),
-    });
-    setBusy(false);
-    setSent(true);
-    toast.success("Thank you! We'll call you back within the hour.", {
-      description: "Your enquiry is now with our admissions team.",
-    });
+    // The form asks for an age, the pipeline stores a date of birth. Guessing
+    // one from an age nobody typed would put a birthday in the record that the
+    // parent never gave us, so an unanswered age stays unanswered.
+    const age = Number(form.childAge);
+    const months = Number.isFinite(age) && age > 0 ? Math.round(age * 12) : null;
+    try {
+      await post("/public/contact", {
+        parentName: form.parentName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        childName: form.childName.trim(),
+        ...(months === null
+          ? {}
+          : { childDob: new Date(Date.now() - months * 30.4 * 86_400_000).toISOString() }),
+        programSlug: form.programSlug,
+        branchId,
+        message: form.message.trim(),
+      });
+      setSent(true);
+      toast.success("Thank you! We'll call you back within the hour.", {
+        description: "Your enquiry is now with our admissions team.",
+      });
+    } catch (err) {
+      // Say what went wrong and keep what they typed — retyping a form because
+      // the network blinked is how a school loses an enrolment.
+      toast.error(err instanceof Error ? err.message : "We could not send that — please try again");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (sent) {
@@ -125,11 +136,11 @@ export function EnquiryForm({
             label="Interested in"
             value={form.programSlug}
             onChange={(v) => set("programSlug", v as ProgramSlug)}
-            options={CATALOGUE.programs.map((p) => ({ value: p.slug, label: `${p.emoji} ${p.name}` }))}
+            options={programs.map((p) => ({ value: p.slug, label: `${p.emoji} ${p.name}` }))}
           />
           <SelectField
             label="Branch"
-            value={form.branchId}
+            value={branchId}
             onChange={(v) => set("branchId", v)}
             options={branches.map((b) => ({ value: b.id, label: b.name.replace("Climb Kiddo — ", "") }))}
           />

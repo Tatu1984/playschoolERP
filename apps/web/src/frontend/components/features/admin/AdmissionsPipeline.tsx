@@ -125,7 +125,9 @@ export function AdmissionsPipeline() {
       inquiryId: inq.id,
       applicationNo: `APP/2026/${300 + applications.length}`,
       childName: inq.childName || `${inq.parentName}'s child`,
-      childDob: inq.childDob,
+      // An application needs a date of birth; an enquiry may not have carried
+      // one, in which case the office fills it in at review.
+      childDob: inq.childDob ?? nowIso(),
       programSlug: inq.programSlug,
       branchId: inq.branchId,
       parentName: inq.parentName,

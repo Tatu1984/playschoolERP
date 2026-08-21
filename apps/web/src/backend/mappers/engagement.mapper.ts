@@ -234,7 +234,7 @@ export function toInquiry(q: InquiryRow): Inquiry {
     email: q.email,
     phone: q.phone,
     childName: q.childName,
-    childDob: iso(q.childDob),
+    childDob: isoOrNull(q.childDob),
     programSlug: q.programSlug as ProgramSlug,
     branchId: q.branchId,
     source: q.source,
