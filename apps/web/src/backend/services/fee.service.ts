@@ -51,9 +51,13 @@ export const feeService = {
     return where;
   },
 
-  async listInvoices(scope: Scope, filters: { studentId?: string; status?: string } = {}): Promise<Invoice[]> {
+  async listInvoices(
+    scope: Scope,
+    filters: { studentId?: string; status?: string } = {},
+    limit?: number,
+  ): Promise<Invoice[]> {
     if (scope.role === ROLES.TEACHER) throw new ForbiddenError("Fees are not a teacher's business");
-    return (await feeRepository.listInvoices(this.invoiceWhere(scope, filters))).map(toInvoice);
+    return (await feeRepository.listInvoices(this.invoiceWhere(scope, filters), limit)).map(toInvoice);
   },
 
   async getInvoice(scope: Scope, id: string): Promise<Invoice> {
@@ -78,12 +82,12 @@ export const feeService = {
     };
   },
 
-  async listPayments(scope: Scope, studentId?: string): Promise<Payment[]> {
+  async listPayments(scope: Scope, studentId?: string, limit?: number): Promise<Payment[]> {
     const where: Prisma.PaymentWhereInput = {};
     if (scope.role === ROLES.PARENT) where.studentId = { in: scope.studentIds };
     else if (studentId) where.studentId = studentId;
     else if (scope.branchId) where.invoice = { branchId: scope.branchId };
-    return (await feeRepository.listPayments(where)).map(toPayment);
+    return (await feeRepository.listPayments(where, limit)).map(toPayment);
   },
 
   async listStructures(scope: Scope): Promise<FeeStructure[]> {

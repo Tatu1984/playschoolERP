@@ -66,8 +66,9 @@ export const attendanceService = {
   async list(
     scope: Scope,
     filters: { studentId?: string; classroomId?: string; date?: string; from?: string; to?: string } = {},
+    limit?: number,
   ): Promise<AttendanceRecord[]> {
-    const rows = await attendanceRepository.list(this.scopedWhere(scope, filters));
+    const rows = await attendanceRepository.list(this.scopedWhere(scope, filters), limit);
     return rows.map(toAttendance);
   },
 

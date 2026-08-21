@@ -9,7 +9,7 @@
  */
 import { del, get, patch, post } from "./client";
 import { COLLECTION_ROUTES, type CollectionRoute } from "./collections";
-import type { CollectionKey, ErpData } from "@/frontend/store/erpStore";
+import type { CollectionKey, ErpData, SnapshotCoverage } from "@/frontend/store/erpStore";
 import type { AttendanceStatus } from "@/shared/types/school.types";
 import type {
   Application,
@@ -23,8 +23,12 @@ import type { Role } from "@/shared/constants/roles";
 
 // ---------------------------------------------------------------- bootstrap
 
-export async function fetchSnapshot(): Promise<ErpData> {
-  const { data } = await get<{ data: ErpData }>("/bootstrap");
+/**
+ * The whole portal in one call. `coverage` describes how far back it reaches —
+ * the snapshot is a window, not the school's entire history.
+ */
+export async function fetchSnapshot(): Promise<ErpData & { coverage?: SnapshotCoverage }> {
+  const { data } = await get<{ data: ErpData & { coverage?: SnapshotCoverage } }>("/bootstrap");
   return data;
 }
 

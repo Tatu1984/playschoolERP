@@ -83,6 +83,26 @@ import { dateKey, nowIso, today } from "@/shared/utils/date.util";
 
 // ---------------------------------------------------------------- shape
 
+/**
+ * What the last snapshot actually covered.
+ *
+ * The bootstrap is time-bounded — a portal load fetches a term, not a school's
+ * whole history — so the time-series collections below are a window rather than
+ * everything. Optional because the fixtures the store starts from have no
+ * server behind them.
+ *
+ * Anything that reports a total ("this child was absent 4 times") is reporting
+ * it *within this window*, and screens that say otherwise are lying by omission.
+ * The per-resource endpoints take the same filters when a screen needs to reach
+ * further back.
+ */
+export interface SnapshotCoverage {
+  /** Nothing older than this is present in the windowed collections. */
+  since: string;
+  /** Collections that also hit a row cap, so are the newest N rather than all. */
+  truncated: string[];
+}
+
 export interface ErpData {
   branches: Branch[];
   classrooms: Classroom[];
@@ -140,6 +160,13 @@ export interface ErpMeta {
   loading: boolean;
   /** Last sync failure, already shown as a toast; kept for the settings page. */
   lastError: string | null;
+  /**
+   * What the last snapshot covered, or null before one has landed. Metadata
+   * about the fetch rather than one of the collections, which is why it sits
+   * here and not in `ErpData` — it is also why it does not appear in
+   * `CollectionKey` and cannot be handed to `addItem`.
+   */
+  coverage: SnapshotCoverage | null;
 }
 
 /** Keys of ErpData that hold arrays of `{ id }` records — the CRUD-able ones. */
@@ -272,6 +299,7 @@ export const useErpStore = create<ErpStore>()(
       hydrated: false,
       loading: false,
       lastError: null,
+      coverage: null,
 
       refresh: async () => {
         if (!apiEnabled()) {
@@ -280,8 +308,8 @@ export const useErpStore = create<ErpStore>()(
         }
         set({ loading: true });
         try {
-          const data = await remote.fetchSnapshot();
-          set({ ...data, hydrated: true, loading: false, lastError: null });
+          const { coverage, ...data } = await remote.fetchSnapshot();
+          set({ ...data, coverage: coverage ?? null, hydrated: true, loading: false, lastError: null });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Could not load your data";
           console.error("[erp] bootstrap failed:", e);

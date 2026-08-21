@@ -14,6 +14,7 @@
     "check:scoping": "tsx tests/integration/scoping.test.ts",
     "check:auth-guards": "tsx tests/integration/auth-guards.test.ts",
     "check:health": "tsx tests/integration/health.test.ts",
+    "check:bootstrap": "tsx tests/integration/bootstrap.test.ts",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -21,7 +22,7 @@
     "db:studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger",
-    "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health"
+    "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health && npm run check:bootstrap"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

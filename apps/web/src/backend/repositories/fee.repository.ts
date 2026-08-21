@@ -3,11 +3,12 @@ import { prisma, type Prisma } from "@/backend/database/client";
 export const invoiceInclude = { lines: true } satisfies Prisma.InvoiceInclude;
 
 export const feeRepository = {
-  listInvoices(where: Prisma.InvoiceWhereInput) {
+  listInvoices(where: Prisma.InvoiceWhereInput, take?: number) {
     return prisma.invoice.findMany({
       where,
       include: invoiceInclude,
       orderBy: { issuedOn: "desc" },
+      ...(take ? { take } : {}),
     });
   },
 
@@ -19,8 +20,8 @@ export const feeRepository = {
     return prisma.invoice.update({ where: { id }, data, include: invoiceInclude });
   },
 
-  listPayments(where: Prisma.PaymentWhereInput) {
-    return prisma.payment.findMany({ where, orderBy: { paidAt: "desc" } });
+  listPayments(where: Prisma.PaymentWhereInput, take?: number) {
+    return prisma.payment.findMany({ where, orderBy: { paidAt: "desc" }, ...(take ? { take } : {}) });
   },
 
   listStructures(where: Prisma.FeeStructureWhereInput) {

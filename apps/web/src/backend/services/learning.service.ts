@@ -65,7 +65,7 @@ export const learningService = {
   },
 
   // ------------------------------------------------------------- progress
-  async listReports(scope: Scope, studentId?: string): Promise<ProgressReport[]> {
+  async listReports(scope: Scope, studentId?: string, limit?: number): Promise<ProgressReport[]> {
     const where: Prisma.ProgressReportWhereInput = {};
     if (scope.role === ROLES.PARENT) {
       // Published only, own children only.
@@ -79,7 +79,11 @@ export const learningService = {
       if (scope.role === ROLES.TEACHER) where.student = { classroomId: { in: scope.classroomIds } };
       else if (scope.branchId) where.student = { branchId: scope.branchId };
     }
-    const rows = await prisma.progressReport.findMany({ where, orderBy: { createdAt: "desc" } });
+    const rows = await prisma.progressReport.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      ...(limit ? { take: limit } : {}),
+    });
     return rows.map(toProgressReport);
   },
 
@@ -112,7 +116,7 @@ export const learningService = {
   },
 
   // ----------------------------------------------------------- milestones
-  async listMilestones(scope: Scope, studentId?: string): Promise<Milestone[]> {
+  async listMilestones(scope: Scope, studentId?: string, limit?: number): Promise<Milestone[]> {
     const where: Prisma.MilestoneWhereInput = {};
     if (scope.role === ROLES.PARENT) {
       where.studentId = studentId && scope.studentIds.includes(studentId)
@@ -125,7 +129,11 @@ export const learningService = {
     } else if (scope.branchId) {
       where.student = { branchId: scope.branchId };
     }
-    const rows = await prisma.milestone.findMany({ where, orderBy: { achievedOn: "desc" } });
+    const rows = await prisma.milestone.findMany({
+      where,
+      orderBy: { achievedOn: "desc" },
+      ...(limit ? { take: limit } : {}),
+    });
     return rows.map(toMilestone);
   },
 
