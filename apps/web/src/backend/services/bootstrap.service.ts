@@ -157,7 +157,7 @@ export const bootstrapService = {
       opsService.preferences(scope),
       opsService.listDevices(scope),
       opsService.listBroadcasts(scope),
-      isAdmin ? auditService.list() : [],
+      isAdmin ? auditService.list(scope) : [],
       isAdmin ? opsService.listRoles(scope) : [],
       opsService.settings(),
       isAdmin ? analyticsService.snapshot(scope) : EMPTY_ANALYTICS,

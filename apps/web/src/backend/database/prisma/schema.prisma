@@ -326,6 +326,7 @@ model Branch {
   applications  Application[]
   visitBookings VisitBooking[]
   broadcasts    SafetyBroadcast[]
+  auditEntries  AuditEntry[]
 }
 
 // Static catalogue (toddlers, nursery, …). Seeded, admin-editable later.
@@ -431,7 +432,6 @@ model User {
 // web app gets the same session as an HttpOnly cookie.
 /**
  * A fixed-window counter, one row per (bucket, key).
- *
  * This lives in Postgres rather than in memory because the app runs on
  * serverless instances that do not share a process — an in-memory counter would
  * reset on every cold start and count only the requests that happened to land
@@ -1415,9 +1415,16 @@ model AuditEntry {
   detail    String   @default("")
   ip        String   @default("")
   createdAt DateTime @default(now())
+  // Which branch's trail this entry belongs to, so a branch admin reads their
+  // own campus rather than everyone's. Null means "no single branch": a
+  // SUPER_ADMIN acting across all of them, and every row written before this
+  // column existed. Only SUPER_ADMIN sees those.
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([action])
+  @@index([branchId, createdAt])
 }
 
 // Editable permission set per role (/admin/roles). The four rows are seeded and
