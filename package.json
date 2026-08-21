@@ -20,5 +20,8 @@
     "db:studio": "npm run db:studio --workspace=@climbkiddo/web",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

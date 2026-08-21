@@ -30,6 +30,11 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # A dependency advisory in a product holding children's records is a
+      # deploy blocker, not a backlog item. Runtime dependencies only: a CLI's
+      # transitive tree is not reachable from a request.
+      - name: No high-severity advisories in runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
 
   # The scoping suite asks a real database real questions — who may read whose
   # medical record — so it needs Postgres and the seed. Running the migrations
