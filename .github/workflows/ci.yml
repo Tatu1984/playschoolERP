@@ -14,6 +14,11 @@ jobs:
   check:
     name: Lint, types, unit tests
     runs-on: ubuntu-latest
+    # No database is contacted in this job, but `npm ci` runs `prisma generate`
+    # through postinstall, and prisma.config.ts resolves DATABASE_URL eagerly —
+    # so the variable has to exist even though nothing connects with it.
+    env:
+      DATABASE_URL: postgresql://playschool:playschool@localhost:5432/playschool
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
