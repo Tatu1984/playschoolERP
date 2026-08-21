@@ -2,15 +2,15 @@
 
 **From where this is today to something that can hold a real school's data.**
 
-Last updated: 2026-08-21. Every claim below was checked against the codebase on
-that date; file paths are given so each one can be re-verified rather than
-taken on trust.
+Last updated: 2026-08-21 (Phase 1 complete). Every claim below was checked
+against the codebase on that date; file paths are given so each one can be
+re-verified rather than taken on trust.
 
 ---
 
 ## 1. Where this actually stands
 
-**Overall: ~65% ready.** Deployable to a pilot — one branch, staff who know
+**Overall: ~70% ready.** (Phase 1 is done — §2 records what was closed.) Deployable to a pilot — one branch, staff who know
 they are early, no marketing push. Not ready for a full school's records, and
 not ready for parents who will depend on it.
 
@@ -27,13 +27,13 @@ broken at all**.
 
 | Area | State | Why |
 |---|---|---|
-| Access control & scoping | 85% | Per-role, tested (24 assertions). Audit trail still unscoped. |
+| Access control & scoping | 95% | Per-role, tested (32 assertions). Audit trail now scoped too. |
 | Payments | 90% | Mock unreachable in prod, webhooks verified, replays idempotent. |
 | Auth & sessions | 70% | Revocable, rate limited. **No account recovery at all.** |
 | Data integrity & migrations | 95% | Migrations clean, drift-checked in CI. |
-| Dependencies | 40% | **13 high-severity, incl. a live proxy bypass.** |
-| Transport & headers | 20% | **No CSP, HSTS, or frame-ancestors.** |
-| Backend testing | 75% | 103 integration assertions against real Postgres. |
+| Dependencies | 95% | Zero high-severity in runtime deps; CI fails on a new one. |
+| Transport & headers | 75% | Enforced frame-ancestors/HSTS/nosniff. Full CSP still report-only. |
+| Backend testing | 80% | 111 integration assertions against real Postgres. |
 | Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
 | Observability | 70% | Structured logs, health check. No tracker wired, no alerting. |
 | Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
@@ -54,80 +54,92 @@ Verified by tests that fail against the previous code, not by inspection:
 - Login and the public forms had no brute-force protection.
 - `schema.prisma` had drifted from `migrations/`; a deploy would have broken.
 - No CI. Now green, including the integration suite against real Postgres.
+- A middleware/proxy bypass in `next@16.2.6` (GHSA-6gpp-xcg3-4w24) sat under
+  the role gates on `/admin`, `/teacher` and `/parent`.
+- Thirteen high-severity advisories in production dependencies.
+- No security headers at all: any site could frame the live camera feed.
+- The audit trail answered every admin with every branch's entries.
 
-200 assertions total: 97 unit, 103 integration.
+240 assertions total: 129 unit, 111 integration.
 
 ---
 
-## 2. Phase 1 — Hardening (est. 1–2 days)
+## 2. Phase 1 — Hardening — **done, 2026-08-21**
 
-Everything here is small, well-understood, and blocks a real deployment.
+Four items, all merged. Each is recorded here rather than deleted, because the
+next person's first question about a security control is what it was for.
 
-### 1.1 Upgrade Next.js — **do this first**
+### 1.1 Next.js 16.2.6 → 16.3.2 ✅
 
-`next@16.2.6` carries nine advisories. One is
-[GHSA-6gpp-xcg3-4w24](https://github.com/advisories/GHSA-6gpp-xcg3-4w24):
-*middleware/proxy bypass in App Router apps using Turbopack* — which is exactly
-what `apps/web/src/proxy.ts` is and how it runs. The role gates on `/admin`,
-`/teacher` and `/parent` are what it protects.
+Closed nine advisories, [GHSA-6gpp-xcg3-4w24](https://github.com/advisories/GHSA-6gpp-xcg3-4w24)
+among them: *middleware/proxy bypass in App Router apps using Turbopack*, which
+is exactly what `apps/web/src/proxy.ts` is and how it runs. The blast radius was
+limited on purpose — the API layer never trusted the proxy, so every route
+re-derives scope in the service layer, and a bypass exposed page shells rather
+than data.
 
-The blast radius is limited on purpose: the API layer never trusted the proxy,
-so every route re-derives scope in the service layer. A bypass exposes page
-shells, not data — that is defence-in-depth doing its job, not a reason to stay
-put. Also in the set: SSRF via rewrites, DoS in Server Actions, and
-unauthenticated disclosure of internal Server Function endpoints.
+16.3 also enables `no-location-assign-relative-destination`, which caught a real
+one: "Pay this invoice" navigated with `window.location.href`, reloading the
+whole portal to move one route across. Now `router.push`.
 
-- Upgrade to `next@16.3.2` (`isSemVerMajor: false`).
-- **Read `node_modules/next/dist/docs/` before assuming any API is unchanged** —
-  per `AGENTS.md`, this Next differs from what is commonly assumed.
-- Do it on a branch; run lint, typecheck, all 200 assertions, and a production
-  build before merging.
+### 1.2 Dependency advisories ✅
 
-**Exit:** `npm audit --omit=dev` reports no `next` advisory; full suite green.
+Zero high-severity in runtime dependencies, without a single forced downgrade:
 
-### 1.2 Clear the remaining dependency advisories
+- `@vercel/blob` 2.4 → 2.8 and `prisma`/`@prisma/*` 7.8 → 7.9 carried the
+  `undici` and `fast-uri` fixes.
+- `shadcn` is a scaffolding CLI plus a stylesheet, so it is a devDependency now.
+  That took `ip-address`, `js-yaml`, `brace-expansion` and most of the `hono`
+  tree out of the production surface — none of it was ever reachable from a
+  request.
+- `deepmerge-ts` is pinned to exactly 7.1.5 by `@prisma/config`, which reaches
+  production because `@prisma/client` depends on the CLI. An `overrides` entry
+  moves it to ^8; `@prisma/config` uses only the plain `deepmerge` export.
 
-12 more high-severity in production dependencies: `sharp` (four libvips CVEs),
-`undici` (header injection via `Set-Cookie` percent-decoding), `ip-address`
-(octal-octet SSRF), `postcss`, `js-yaml`, `brace-expansion`, `deepmerge-ts`,
-`hono`, `fast-uri`, `nanoid`, `@prisma/config`, `prisma`.
+CI now runs `npm audit --omit=dev --audit-level=high`, so a new advisory fails
+the build rather than waiting for someone to look.
 
-Most are transitive. Work top-down: upgrade direct dependencies first and
-re-audit, rather than reaching for `npm audit fix --force`.
+### 1.3 Security headers ✅
 
-**Exit:** zero high or critical in `npm audit --omit=dev`. Add
-`npm audit --omit=dev --audit-level=high` to CI so it stays that way.
+`apps/web/src/config/security-headers.ts`, spread into `headers()` in
+`next.config.ts` for every path. Kept in its own module so it can be tested —
+a header set that lives only in configuration is one that vanishes in an
+unrelated edit.
 
-### 1.3 Security headers
+**Enforced now:** `frame-ancestors 'self'` (the sharp edge — nothing stopped
+another site framing the live camera view), `object-src 'none'`, `base-uri`,
+`form-action`, `upgrade-insecure-requests` in production, `nosniff`,
+`strict-origin-when-cross-origin`, HSTS for two years with `preload`, and a
+`Permissions-Policy` denying camera and microphone: the CCTV viewer receives
+video, it never captures any.
 
-`apps/web/next.config.ts` sets none. For a product that embeds a live WebRTC
-feed of children, the missing `frame-ancestors` is the sharpest edge: nothing
-currently stops that view being framed by another site.
+**Report-only:** the full `default-src 'self'` policy, reporting to
+`/api/csp-report`. Enforcing it blind across 100+ routes breaks a page nobody
+remembered, in a parent's browser rather than in CI.
 
-Add via `headers()` in `next.config.ts`:
+Two decisions worth keeping:
 
-- `Content-Security-Policy` — start with `frame-ancestors 'self'`, then grow a
-  full policy in report-only mode before enforcing.
-- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
-- `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy` — deny everything not used; the CCTV viewer needs none of
-  camera/microphone (it receives, it does not capture).
+- `'unsafe-inline'` for scripts is deliberate. A nonce means every static
+  marketing page becomes a server render, because Next.js can only apply one to
+  a dynamically rendered page. The policy still stops an injected script from
+  loading code from — or sending records to — an unlisted origin.
+- `MEDIAMTX_WHEP_URL` / `MEDIAMTX_HLS_URL` are read into `connect-src` at build
+  time. Changing either needs a redeploy for the policy to follow it.
 
-**Exit:** headers asserted in an integration test, so a later config edit cannot
-silently drop them.
+**Still open:** promote the report-only policy to enforced once the reports are
+quiet, and add `https://checkout.razorpay.com` when Checkout lands in the
+browser.
 
-### 1.4 Scope the audit trail
+### 1.4 Audit trail scoping ✅
 
-`auditService.list()` (`apps/web/src/backend/services/audit.service.ts:41`) takes
-no `Scope`, so a branch admin reads the other branch's entries. Both callers —
-`/api/audit` and the bootstrap — pass none.
+`AuditEntry` now carries the actor's branch, written from the session at record
+time, and `auditService.list()` takes a `Scope`. SUPER_ADMIN sees everything; an
+ADMIN sees their own branch. A null branch means "no single branch" — a
+SUPER_ADMIN acting globally, or a row from before the column existed — and only
+SUPER_ADMIN reads those. An admin whose own branch is unset gets nothing, rather
+than exactly that reserved set.
 
-Give it a `Scope`, filter by branch for non-`SUPER_ADMIN`, and extend the
-scoping suite to cover it. Small, and it is the last finding from the original
-audit still open.
-
-**Exit:** an assertion in `tests/integration/scoping.test.ts`.
+This was the last finding from the original audit still open.
 
 ---
 
@@ -332,9 +344,9 @@ paying an invoice.
 
 | Order | Work | Effort | Blocks launch? |
 |---|---|---|---|
-| 1 | Next upgrade + dependency advisories | 1–2 d | Yes |
-| 2 | Security headers | 0.5 d | Yes |
-| 3 | Audit trail scoping | 0.5 d | Yes |
+| ~~1~~ | ~~Next upgrade + dependency advisories~~ | done | ✅ |
+| ~~2~~ | ~~Security headers~~ | done | ✅ (CSP still report-only) |
+| ~~3~~ | ~~Audit trail scoping~~ | done | ✅ |
 | 4 | Account recovery + email provider | 4–5 d | Yes |
 | 5 | Notification delivery | 4–5 d | Yes — emergency broadcasts |
 | 6 | Backups, restore drill, retention | 3 d | Yes |
@@ -349,7 +361,8 @@ paying an invoice.
 | 15 | Accessibility audit | 3 d | No |
 | 16 | Mobile app — build or delete references | — | No |
 
-Roughly **4–6 weeks of engineering** to a defensible launch for one school,
+Roughly **4–6 weeks of engineering** from the original starting point, of
+which Phase 1 is now spent, to a defensible launch for one school,
 excluding legal review and the external pen test, both of which should start
 early because they run on someone else's calendar.
 
