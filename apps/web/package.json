@@ -22,7 +22,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger",
     "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health && npm run check:bootstrap && npm run check:cctv && npm run check:fees-attendance"
   },
