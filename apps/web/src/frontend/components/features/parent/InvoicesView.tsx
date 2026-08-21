@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Eye, FileText, Printer, Receipt, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { formatDate, relativeDays } from "@/frontend/utils/formatters";
  * payments page is "what do I owe right now", this is the full paper trail.
  */
 export function InvoicesView() {
+  const router = useRouter();
   const { child, kids } = useSelectedChild();
   const invoices = useErpStore((s) => s.invoices);
   const payments = useErpStore((s) => s.payments);
@@ -174,7 +176,7 @@ export function InvoicesView() {
                   label: "Pay this invoice",
                   separatorBefore: true,
                   onSelect: () => {
-                    window.location.href = "/parent/payments";
+                    router.push("/parent/payments");
                   },
                 },
               ]
