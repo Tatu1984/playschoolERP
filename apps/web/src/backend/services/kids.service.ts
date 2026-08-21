@@ -40,9 +40,13 @@ const EMPTY_JOURNEY = {
   mascot: "kiki" as MascotKey,
 };
 
-/** Staff can look at any child's progress; a parent only at their own. */
-function assertChild(scope: Scope, studentId: string) {
-  if (scope.role === ROLES.PARENT && !canSeeStudent(scope, studentId)) {
+/**
+ * A parent may look at their own children; staff at the children they are
+ * responsible for. `canSeeStudent` answers that per role, so this no longer
+ * waves staff through on the strength of being staff.
+ */
+async function assertChild(scope: Scope, studentId: string) {
+  if (!(await canSeeStudent(scope, studentId))) {
     throw new ForbiddenError();
   }
 }
@@ -70,7 +74,7 @@ export const kidsService = {
   },
 
   async journey(scope: Scope, studentId: string): Promise<JourneyState> {
-    assertChild(scope, studentId);
+    await assertChild(scope, studentId);
     const row = await prisma.journeyState.findUnique({ where: { studentId } });
     return row ? toJourney(row) : { studentId, ...EMPTY_JOURNEY };
   },
@@ -89,7 +93,7 @@ export const kidsService = {
       : scope.role === ROLES.PARENT
         ? { studentId: { in: scope.studentIds } }
         : {};
-    if (studentId) assertChild(scope, studentId);
+    if (studentId) await assertChild(scope, studentId);
     const rows = await prisma.gameSession.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -107,7 +111,7 @@ export const kidsService = {
     scope: Scope,
     input: { studentId: string; gameSlug: string; score: number; stars: number; durationSec: number },
   ): Promise<{ journey: JourneyState; session: GameSession; newBadges: Badge[] }> {
-    assertChild(scope, input.studentId);
+    await assertChild(scope, input.studentId);
     const game = await prisma.game.findUnique({ where: { slug: input.gameSlug } });
     if (!game) throw new NotFoundError("Game not found");
     // The client reports a score; the server decides the stars.
@@ -177,7 +181,7 @@ export const kidsService = {
   },
 
   async finishStory(scope: Scope, studentId: string, storyId: string): Promise<JourneyState> {
-    assertChild(scope, studentId);
+    await assertChild(scope, studentId);
     const current = await prisma.journeyState.findUnique({ where: { studentId } });
     const finished = current?.finishedStories ?? [];
     if (finished.includes(storyId)) return this.journey(scope, studentId);
@@ -190,7 +194,7 @@ export const kidsService = {
   },
 
   async setMascot(scope: Scope, studentId: string, mascot: MascotKey): Promise<JourneyState> {
-    assertChild(scope, studentId);
+    await assertChild(scope, studentId);
     const saved = await prisma.journeyState.upsert({
       where: { studentId },
       update: { mascot },
@@ -200,7 +204,7 @@ export const kidsService = {
   },
 
   async listArtwork(scope: Scope, studentId?: string): Promise<Artwork[]> {
-    if (studentId) assertChild(scope, studentId);
+    if (studentId) await assertChild(scope, studentId);
     const where = studentId
       ? { studentId }
       : scope.role === ROLES.PARENT
@@ -211,7 +215,7 @@ export const kidsService = {
   },
 
   async saveArtwork(scope: Scope, studentId: string, title: string, dataUrl: string): Promise<Artwork> {
-    assertChild(scope, studentId);
+    await assertChild(scope, studentId);
     const row = await prisma.artwork.create({ data: { studentId, title, dataUrl } });
     return toArtwork(row);
   },
@@ -219,7 +223,7 @@ export const kidsService = {
   async deleteArtwork(scope: Scope, id: string): Promise<void> {
     const existing = await prisma.artwork.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Artwork not found");
-    assertChild(scope, existing.studentId);
+    await assertChild(scope, existing.studentId);
     await prisma.artwork.delete({ where: { id } });
   },
 };

@@ -131,7 +131,7 @@ export const learningService = {
 
   async addMilestone(scope: Scope, input: CreateMilestoneInput): Promise<Milestone> {
     requireRole(scope.role, TEACHERS);
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
     const row = await prisma.milestone.create({
       data: { ...input, achievedOn: new Date(input.achievedOn) },
     });
@@ -142,6 +142,8 @@ export const learningService = {
     requireRole(scope.role, TEACHERS);
     const existing = await prisma.milestone.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Milestone not found");
+    // Being a teacher says you may delete milestones, not whose.
+    if (!(await canSeeStudent(scope, existing.studentId))) throw new ForbiddenError();
     await prisma.milestone.delete({ where: { id } });
   },
 };

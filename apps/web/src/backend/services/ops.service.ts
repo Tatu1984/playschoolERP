@@ -130,7 +130,7 @@ export const opsService = {
 
   // ------------------------------------------------------------- safety
   async emergencyContacts(scope: Scope, studentId: string): Promise<EmergencyContact[]> {
-    if (!canSeeStudent(scope, studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, studentId))) throw new ForbiddenError();
     const rows = await prisma.emergencyContact.findMany({
       where: { studentId },
       orderBy: { priority: "asc" },
@@ -143,7 +143,16 @@ export const opsService = {
     id: string | null,
     input: EmergencyContactInput,
   ): Promise<EmergencyContact> {
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    // Both ends of an edit have to be checked. `input.studentId` is the caller's
+    // to choose, so on its own it only proves they may write to *some* child —
+    // pair it with someone else's contact id and the update would walk the row
+    // over to their own child. The row being edited is checked on its own terms.
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
+    if (id) {
+      const existing = await prisma.emergencyContact.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundError("Contact not found");
+      if (!(await canSeeStudent(scope, existing.studentId))) throw new ForbiddenError();
+    }
     const row = id
       ? await prisma.emergencyContact.update({ where: { id }, data: input })
       : await prisma.emergencyContact.create({ data: input });
@@ -153,12 +162,12 @@ export const opsService = {
   async deleteEmergencyContact(scope: Scope, id: string): Promise<void> {
     const existing = await prisma.emergencyContact.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError("Contact not found");
-    if (!canSeeStudent(scope, existing.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, existing.studentId))) throw new ForbiddenError();
     await prisma.emergencyContact.delete({ where: { id } });
   },
 
   async medicalProfile(scope: Scope, studentId: string): Promise<MedicalProfile> {
-    if (!canSeeStudent(scope, studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, studentId))) throw new ForbiddenError();
     const row = await prisma.medicalProfile.findUnique({ where: { studentId } });
     if (row) return toMedicalProfile(row);
     return {
@@ -175,7 +184,7 @@ export const opsService = {
   },
 
   async upsertMedicalProfile(scope: Scope, input: MedicalProfileInput): Promise<MedicalProfile> {
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
     const { studentId, ...rest } = input;
     const row = await prisma.medicalProfile.upsert({
       where: { studentId },

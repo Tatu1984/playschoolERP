@@ -5,6 +5,7 @@ import { paymentGateway } from "@/backend/integrations/payments";
 import { authed } from "@/backend/utils/route.util";
 import { resolveScope } from "@/backend/utils/scope.util";
 import { ForbiddenError } from "@/backend/utils/error-handler.util";
+import { env } from "@/config/env";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,13 @@ const schema = z.object({
  * a payment; it only gets to ask the fake gateway to behave like the real one.
  */
 export const POST = authed(async (req: NextRequest, _ctx: unknown, session) => {
+  // Belt and braces. The driver rule already guarantees the mock is never built
+  // in production, but this route is the one that can settle an invoice without
+  // money changing hands, so it refuses on its own account too — a later edit to
+  // the selection logic must not be able to quietly switch it back on.
+  if (env.isProd) {
+    throw new ForbiddenError("Not available in production");
+  }
   if (paymentGateway.name !== "mock") {
     throw new ForbiddenError("A real payment gateway is configured — pay through it");
   }

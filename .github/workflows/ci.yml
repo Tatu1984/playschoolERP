@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Everything that needs no database. Fast, and the common case.
+  check:
+    name: Lint, types, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # `npm ci` runs prisma generate via postinstall, which the typecheck needs.
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  # The scoping suite asks a real database real questions — who may read whose
+  # medical record — so it needs Postgres and the seed. Running the migrations
+  # here also keeps them honest: schema.prisma drifting away from migrations/
+  # fails the build rather than the deploy.
+  integration:
+    name: Scoping against Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: playschool
+          POSTGRES_PASSWORD: playschool
+          POSTGRES_DB: playschool
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://playschool:playschool@localhost:5432/playschool
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/web
+      # `migrate deploy` above applied migrations/; this asks whether the
+      # database that produced is actually the shape schema.prisma describes.
+      # Exit code 2 means drift — the failure mode being a migration that was
+      # never written for a schema edit, which only shows up at deploy time.
+      - name: Fail if schema.prisma has drifted from migrations/
+        run: npx prisma migrate diff --from-config-datasource --to-schema ./src/backend/database/prisma/schema.prisma --exit-code
+        working-directory: apps/web
+      - run: npm run db:seed --workspace=@climbkiddo/web
+      - run: npm run test:integration --workspace=@climbkiddo/web

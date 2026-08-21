@@ -39,6 +39,13 @@ const schema = z.object({
   MEDIAMTX_WHEP_URL: z.string().default("http://localhost:8889"),
   MEDIAMTX_HLS_URL: z.string().default("http://localhost:8888"),
 
+  // Payment gateway (Razorpay). Absent outside production means the mock
+  // driver; absent *in* production means online payment is switched off, never
+  // mocked — see backend/integrations/payments.ts.
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+
   // Legacy (marketing GMS) — kept working, unrelated to ERP
   ADMIN_PASSWORD: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),

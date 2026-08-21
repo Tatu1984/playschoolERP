@@ -58,7 +58,7 @@ export const feeService = {
   async getInvoice(scope: Scope, id: string): Promise<Invoice> {
     const row = await feeRepository.findInvoice(id);
     if (!row) throw new NotFoundError("Invoice not found");
-    if (!canSeeStudent(scope, row.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, row.studentId))) throw new ForbiddenError();
     return toInvoice(row);
   },
 

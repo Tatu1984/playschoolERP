@@ -83,7 +83,7 @@ export const messagingService = {
   },
 
   async start(scope: Scope, input: StartConversationInput): Promise<{ conversation: Conversation; message: Message }> {
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
     const senderRole = scope.role === ROLES.PARENT ? "PARENT" : scope.role === ROLES.TEACHER ? "TEACHER" : "ADMIN";
     const participants = [...new Set([scope.userId, ...input.participantIds])];
 
@@ -154,7 +154,7 @@ export const messagingService = {
   },
 
   async requestMeeting(scope: Scope, input: CreateMeetingInput): Promise<Meeting> {
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
     const row = await messagingRepository.createMeeting({
       ...input,
       scheduledFor: new Date(input.scheduledFor),
@@ -167,7 +167,7 @@ export const messagingService = {
   async setMeetingStatus(scope: Scope, id: string, status: Meeting["status"]): Promise<Meeting> {
     const existing = await messagingRepository.findMeeting(id);
     if (!existing) throw new NotFoundError("Meeting not found");
-    if (!canSeeStudent(scope, existing.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, existing.studentId))) throw new ForbiddenError();
     // A parent may withdraw their own request; only staff confirm or decline.
     if (scope.role === ROLES.PARENT && status !== "DECLINED") {
       throw new ForbiddenError("Only the school can confirm a meeting");

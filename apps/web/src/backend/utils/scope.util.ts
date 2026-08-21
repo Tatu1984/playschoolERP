@@ -120,7 +120,37 @@ export function studentFilter(scope: Scope): { in: string[] } | null {
   return null;
 }
 
-export function canSeeStudent(scope: Scope, studentId: string): boolean {
+/**
+ * May this login read (or write) things belonging to this child?
+ *
+ * This is the last gate in front of medical records, emergency contacts, fee
+ * invoices and private messages, all of which are reached by an id the caller
+ * supplies. It used to wave every member of staff through, which meant a
+ * teacher at one campus could read a child's medical history at the other by
+ * guessing an id — the list endpoints were scoped, but the by-id ones landed
+ * here.
+ *
+ * So each role is asked the question its own way: a parent about their own
+ * children, an admin about their branch, a teacher about the rooms they
+ * actually teach. Only SUPER_ADMIN answers yes to everything, which is what the
+ * role is for.
+ */
+export async function canSeeStudent(scope: Scope, studentId: string): Promise<boolean> {
+  // A parent already carries their children; no need to ask the database.
   if (scope.role === ROLES.PARENT) return scope.studentIds.includes(studentId);
-  return true;
+  if (scope.role === ROLES.SUPER_ADMIN) return true;
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { branchId: true, classroomId: true },
+  });
+  // A child who does not exist is not a child you may see — this is reached
+  // with caller-supplied ids, so "not found" must not read as "allowed".
+  if (!student) return false;
+
+  if (scope.role === ROLES.ADMIN) return student.branchId === scope.branchId;
+
+  // Teacher: only the rooms they teach or are class teacher of. A child not yet
+  // placed in a room is the office's business, not a teacher's.
+  return student.classroomId !== null && scope.classroomIds.includes(student.classroomId);
 }

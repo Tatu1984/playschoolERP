@@ -226,7 +226,7 @@ export const schoolService = {
   async getStudent(scope: Scope, id: string): Promise<Student> {
     const row = await schoolRepository.findStudent(id);
     if (!row) throw new NotFoundError("Student not found");
-    if (!canSeeStudent(scope, id)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, id))) throw new ForbiddenError();
     if (scope.role === ROLES.TEACHER && row.classroomId && !scope.classroomIds.includes(row.classroomId)) {
       throw new ForbiddenError();
     }

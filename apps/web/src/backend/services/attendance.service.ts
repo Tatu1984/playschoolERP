@@ -189,7 +189,7 @@ export const attendanceService = {
   async listPickupAuths(scope: Scope, studentId?: string): Promise<PickupAuthorization[]> {
     const where: Prisma.PickupAuthorizationWhereInput = {};
     if (studentId) {
-      if (!canSeeStudent(scope, studentId)) throw new ForbiddenError();
+      if (!(await canSeeStudent(scope, studentId))) throw new ForbiddenError();
       where.studentId = studentId;
     } else if (scope.role === ROLES.PARENT) {
       where.studentId = { in: scope.studentIds };
@@ -202,7 +202,7 @@ export const attendanceService = {
     scope: Scope,
     input: { studentId: string; personName: string; relation?: string; phone?: string; validOn?: string },
   ): Promise<PickupAuthorization> {
-    if (!canSeeStudent(scope, input.studentId)) throw new ForbiddenError();
+    if (!(await canSeeStudent(scope, input.studentId))) throw new ForbiddenError();
     const row = await attendanceRepository.createPickupAuth({
       studentId: input.studentId,
       personName: input.personName,
