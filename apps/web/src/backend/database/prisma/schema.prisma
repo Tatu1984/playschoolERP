@@ -392,6 +392,20 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Sessions issued before this instant are refused; null means none ever have
+  // been. The session cookie is a stateless JWT, so without this there is no way
+  // to take one back: disabling an account left the holder working for the rest
+  // of the seven days. Moving this forward is what "sign out everywhere" and
+  // "disable this account" actually do.
+  //
+  // Deliberately no `@default(now())`. These columns are `timestamp without
+  // time zone`, so a database-side default records the server's *local* wall
+  // clock, which Prisma then reads back as UTC — on a machine set to
+  // Asia/Kolkata that lands five and a half hours in the future, and every
+  // freshly issued session is refused as too old. The value is written from the
+  // application instead, where a Date is an unambiguous instant.
+  sessionsValidFrom DateTime?
+
   staff             Staff?
   guardian          Guardian?
   accessGrants      CameraAccessGrant[]
@@ -415,6 +429,27 @@ model User {
 
 // Long-lived refresh tokens, hashed. The mobile app rotates one of these; the
 // web app gets the same session as an HttpOnly cookie.
+/**
+ * A fixed-window counter, one row per (bucket, key).
+ *
+ * This lives in Postgres rather than in memory because the app runs on
+ * serverless instances that do not share a process — an in-memory counter would
+ * reset on every cold start and count only the requests that happened to land
+ * on the same instance, which is the same as not limiting at all.
+ */
+model RateLimit {
+  id          String   @id @default(cuid())
+  // What is being limited ("login", "public-form"), and who by (IP, email).
+  bucket      String
+  key         String
+  // Start of the window this count belongs to; a newer window resets the count.
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([bucket, key])
+  @@index([windowStart])
+}
+
 model RefreshToken {
   id         String    @id @default(cuid())
   userId     String

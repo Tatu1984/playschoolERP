@@ -12,6 +12,7 @@
  *    both claim CK2026107.
  */
 import { prisma, type Prisma } from "@/backend/database/client";
+import { revokeSessions } from "@/backend/services/auth.service";
 import { schoolRepository } from "@/backend/repositories/school.repository";
 import {
   toBranch,
@@ -201,6 +202,11 @@ export const schoolService = {
           ...(rest.status ? { active: rest.status === "ACTIVE" } : {}),
         },
       });
+      // The session cookie carries the role it was signed with, so a demotion
+      // that only changed the row would leave an ex-admin holding admin rights
+      // until their week ran out. Both of these have to take effect now, so the
+      // sessions go.
+      if (rest.status || rest.role) await revokeSessions(row.userId);
     }
     return toStaff(row);
   },

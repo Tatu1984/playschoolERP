@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { admissionService } from "@/backend/services/admission.service";
 import { createInquirySchema } from "@/backend/validators/admission.validator";
 import { created, open } from "@/backend/utils/route.util";
+import { clientIp, enforceRateLimit, PUBLIC_FORM_LIMIT } from "@/backend/utils/rate-limit.util";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export const runtime = "nodejs";
  * public website cannot claim to have been a walk-in or a referral.
  */
 export const POST = open(async (req: NextRequest) => {
+  await enforceRateLimit(PUBLIC_FORM_LIMIT, `ip:${clientIp(req)}`);
   const inquiry = await admissionService.createInquiry(createInquirySchema.parse(await req.json()), "WEBSITE");
   return created({ inquiry });
 });

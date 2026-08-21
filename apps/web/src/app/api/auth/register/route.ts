@@ -6,11 +6,13 @@ import {
   sessionCookieOptions,
 } from "@/backend/services/auth.service";
 import { toErrorResponse } from "@/backend/utils/error-handler.util";
+import { clientIp, enforceRateLimit, REGISTER_LIMIT } from "@/backend/utils/rate-limit.util";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    await enforceRateLimit(REGISTER_LIMIT, `ip:${clientIp(req)}`);
     const input = registerSchema.parse(await req.json());
     await authService.register(input);
     // Auto-login the newly registered parent.

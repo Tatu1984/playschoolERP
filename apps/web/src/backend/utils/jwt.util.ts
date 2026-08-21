@@ -13,6 +13,11 @@ export interface SessionClaims {
   email: string;
   name: string;
   branchId: string | null;
+  /**
+   * Seconds since the epoch, set by `setIssuedAt()` below. Read when deciding
+   * whether a session predates a revocation — see `getSession`.
+   */
+  iat?: number;
 }
 
 export async function signSession(claims: SessionClaims): Promise<string> {

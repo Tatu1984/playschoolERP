@@ -87,10 +87,53 @@ export function sessionCookieOptions() {
   };
 }
 
-/** Read + verify the current session from the request cookies (server-side). */
+/**
+ * Read + verify the current session from the request cookies (server-side).
+ *
+ * Verifying the signature is not enough. The cookie is a stateless JWT good for
+ * seven days, so on its own it says what was true when it was signed — that the
+ * holder was this person, and that the account was enabled a week ago. Firing
+ * someone, or disabling an account after a phone is lost, has to take effect
+ * now, so the account is re-read on every request.
+ *
+ * That is one query per authenticated request. It buys the ability to revoke a
+ * session at all, which for a product holding CCTV of children is not optional.
+ */
 export async function getSession(): Promise<SessionClaims | null> {
   const store = await cookies();
-  return verifySession(store.get(SESSION_COOKIE)?.value);
+  const claims = await verifySession(store.get(SESSION_COOKIE)?.value);
+  if (!claims) return null;
+  return (await sessionStillHolds(claims)) ? claims : null;
+}
+
+/**
+ * Does the account still stand behind this token? Split out from `getSession`
+ * so it can be tested without a request to read cookies from — and so the test
+ * exercises this code rather than a copy of it that could agree with a
+ * reimplementation while both are wrong.
+ */
+export async function sessionStillHolds(claims: SessionClaims): Promise<boolean> {
+  const user = await authRepository.findSessionState(claims.sub);
+  if (!user || !user.active) return false;
+  // Null means nothing has ever been revoked for this account.
+  if (!user.sessionsValidFrom) return true;
+
+  // `iat` is whole seconds, so both sides are compared in whole seconds. The
+  // effect is that a token signed during the same second as a revocation still
+  // passes; the alternative — comparing milliseconds — would refuse the fresh
+  // token of somebody signing straight back in after "sign out everywhere".
+  const validFromSeconds = Math.floor(user.sessionsValidFrom.getTime() / 1000);
+  return !(typeof claims.iat === "number" && claims.iat < validFromSeconds);
+}
+
+/**
+ * Take back every session this account holds, by refusing anything signed
+ * before now. This is what disabling an account and "sign out everywhere" both
+ * come down to — there is no list of live tokens to delete, because the tokens
+ * are not stored anywhere.
+ */
+export async function revokeSessions(userId: string): Promise<void> {
+  await authRepository.setSessionsValidFrom(userId, new Date());
 }
 
 /** Like getSession but throws UnauthorizedError when absent. */
