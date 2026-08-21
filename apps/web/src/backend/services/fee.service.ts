@@ -18,6 +18,7 @@ import { feeRepository } from "@/backend/repositories/fee.repository";
 import { toFeeStructure, toInvoice, toPayment } from "@/backend/mappers";
 import { paymentGateway, type PaymentEvent, type PaymentOrder } from "@/backend/integrations/payments";
 import { AppError, ForbiddenError, NotFoundError } from "@/backend/utils/error-handler.util";
+import { logger } from "@/backend/utils/logger.util";
 import { requireRole } from "@/backend/utils/rbac.util";
 import { canSeeStudent, type Scope } from "@/backend/utils/scope.util";
 import { ROLES, type Role } from "@/shared/constants/roles";
@@ -236,7 +237,10 @@ export const feeService = {
     // ignoring it.
     const invoiceId = event.notes.invoiceId;
     if (!invoiceId) {
-      console.warn("payment webhook with no invoiceId in notes", event.orderId);
+      logger.warn("Payment webhook carried no invoiceId in its notes", {
+        orderId: event.orderId,
+        paymentId: event.paymentId,
+      });
       return;
     }
     const method = (["UPI", "CARD", "NETBANKING"].includes(event.method)

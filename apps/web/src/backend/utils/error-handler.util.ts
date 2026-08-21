@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { logger } from "./logger.util";
 
 /** Base class for expected, client-facing errors carrying an HTTP status. */
 export class AppError extends Error {
@@ -45,7 +46,11 @@ export function toErrorResponse(err: unknown): NextResponse {
       { status: err.status },
     );
   }
-  console.error("Unhandled error:", err);
+  // Anything reaching here is a bug rather than a refusal, so it is logged in
+  // full and answered with nothing: the caller gets a code to quote, and the
+  // stack stays on the server where it cannot tell an attacker how this is
+  // built.
+  logger.error("Unhandled error in route handler", err);
   return NextResponse.json(
     { error: "Internal server error", code: "internal_error" },
     { status: 500 },

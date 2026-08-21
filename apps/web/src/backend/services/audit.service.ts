@@ -11,6 +11,7 @@ import { toAuditEntry } from "@/backend/mappers";
 import type { Session } from "@/backend/utils/route.util";
 import type { AuditEntry } from "@/shared/types/ops.types";
 import type { Role } from "@/shared/constants/roles";
+import { logger } from "@/backend/utils/logger.util";
 
 export interface AuditInput {
   action: string;
@@ -33,7 +34,7 @@ export const auditService = {
         },
       });
     } catch (e) {
-      console.error("audit write failed", input.action, e);
+      logger.error("Audit write failed", e, { action: input.action });
     }
   },
 

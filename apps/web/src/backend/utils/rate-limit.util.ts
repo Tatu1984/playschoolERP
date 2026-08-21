@@ -34,8 +34,27 @@ export interface RateLimit {
   windowSeconds: number;
 }
 
-/** Signing in. Tight, because the reward for guessing is somebody's account. */
-export const LOGIN_LIMIT: RateLimit = { bucket: "login", max: 10, windowSeconds: 300 };
+/**
+ * Signing in, counted per address. Tight, because the reward for guessing is
+ * somebody's account and a single address has no honest reason to fail ten
+ * times in five minutes.
+ */
+export const LOGIN_IP_LIMIT: RateLimit = { bucket: "login-ip", max: 10, windowSeconds: 300 };
+
+/**
+ * Signing in, counted per account, which catches the attack the per-address
+ * limit cannot: many addresses working through a password list against one
+ * known email.
+ *
+ * Deliberately much looser than the address limit, and it is a real trade. Any
+ * per-account limit hands an attacker a way to lock a known account out by
+ * burning its budget on purpose — so the threshold sits well above what a
+ * person mistyping their own password will ever reach, and a successful sign-in
+ * clears it. Stopping the lockout entirely needs something this product does
+ * not have yet (a challenge, or trusted-device history); until then, slowing a
+ * distributed attack is worth more than the griefing it allows.
+ */
+export const LOGIN_EMAIL_LIMIT: RateLimit = { bucket: "login-email", max: 50, windowSeconds: 900 };
 
 /**
  * Anonymous writes from the public site — enquiries, applications, bookings.

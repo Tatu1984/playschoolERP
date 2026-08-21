@@ -9,17 +9,19 @@
     "lint": "eslint",
     "check:flows": "tsx tests/unit/store-flows.test.ts",
     "check:overlays": "tsx tests/unit/overlays.test.tsx",
+    "check:logger": "tsx tests/unit/logger.test.ts",
     "check:payments": "tsx tests/unit/payments.test.ts",
     "check:scoping": "tsx tests/integration/scoping.test.ts",
     "check:auth-guards": "tsx tests/integration/auth-guards.test.ts",
+    "check:health": "tsx tests/integration/health.test.ts",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "typecheck": "tsc --noEmit",
-    "test": "npm run check:flows && npm run check:overlays && npm run check:payments",
-    "test:integration": "npm run check:scoping && npm run check:auth-guards"
+    "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger",
+    "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
