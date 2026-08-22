@@ -35,7 +35,7 @@ broken at all**.
 | Transport & headers | 75% | Enforced frame-ancestors/HSTS/nosniff. Full CSP still report-only. |
 | Backend testing | 80% | 111 integration assertions against real Postgres. |
 | Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
-| Observability | 70% | Structured logs, health check. No tracker wired, no alerting. |
+| Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
 | Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
 | Core feature completeness | 70% | Notifications deliver and record. **No photo upload.** |
 | Compliance & DR | 20% | No retention policy, no backup drill, no DPIA. |
@@ -63,7 +63,7 @@ Verified by tests that fail against the previous code, not by inspection:
   claimed a mail had been sent.
 - Emergency broadcasts wrote a row and reached nobody.
 
-326 assertions total: 151 unit, 175 integration.
+338 assertions total: 163 unit, 175 integration.
 
 ---
 
@@ -292,15 +292,37 @@ This needs a lawyer, not a developer, and it needs one before launch, not after.
 - A subject access path: what a parent may request, and how it is produced.
 - Named data controller, and a breach-notification procedure.
 
-### 3.4 Error tracking and alerting
+### 3.4 Error tracking and alerting ✅ **done, 2026-08-22**
 
-`setErrorReporter` in `backend/utils/logger.util.ts` is a seam with nothing
-plugged into it. Point it at Sentry from `instrumentation.ts` and every
-`logger.error` starts reporting with no other change.
+`setErrorReporter` is wired from `src/instrumentation.ts`, so every
+`logger.error` in the codebase now reports. The driver
+(`backend/integrations/error-reporting.ts`) speaks Sentry's envelope endpoint
+directly rather than through `@sentry/nextjs` — no source maps, no breadcrumbs,
+no tracing, in exchange for no SDK in a dependency tree that was just brought to
+zero advisories. The SDK slots in as another driver if those become worth
+having.
 
-Alert on: `/api/health` non-200, payment webhook signature failures (someone is
-trying), `payments: "disabled"` in production (fees silently uncollectable),
-CCTV `AUTHORIZE_DENIED` spikes, and 5xx rate.
+Plugging something in immediately exposed a defect in the seam: `logger.error`
+passed the **unredacted** fields to the reporter while redacting them for the
+log. Nothing had ever been plugged in, so nobody could tell. Passwords and
+parents' email addresses would have gone straight to a third party on the first
+error. Fixed, and asserted.
+
+Two more things now say something an alert can match:
+
+- A boot line naming every integration, warning when any is `disabled` in
+  production — `payments: "disabled"` means fees are uncollectable, `push:
+  "disabled"` means no emergency broadcast reaches a phone.
+- A payment webhook whose signature does not verify, and a CCTV view denial,
+  each logged explicitly rather than vanishing into a 400 or a 403.
+
+`docs/ops/alerting.md` lists every condition, the exact string that matches it,
+the file that emits it, and what to do — including the three things nothing
+watches yet.
+
+**Still open:** the alert rules themselves live wherever the logs land and
+cannot be created from this repository, and an uptime monitor against
+`/api/health` has to run outside Vercel.
 
 ### 3.5 Secrets
 
@@ -381,7 +403,7 @@ paying an invoice.
 | ~~5~~ | ~~Notification delivery~~ | done | ✅ (no SMS provider) |
 | 6 | Backups, restore drill, retention | 3 d | Yes |
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
-| 8 | Error tracking + alerting | 1 d | Yes |
+| ~~8~~ | ~~Error tracking + alerting~~ | done | ✅ (rules to be created) |
 | 9 | Photo storage with signed URLs | 5–7 d | Feature-dependent |
 | 10 | Surface `coverage` | 2 d | No, but it is currently misleading |
 | 11 | Load testing, then tune windows | 3 d | No |

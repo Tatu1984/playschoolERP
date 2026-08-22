@@ -66,6 +66,13 @@ const schema = z.object({
   // configuration, never a value read from a request header.
   APP_URL: z.string().default("http://localhost:3000"),
 
+  // Error tracking. Absent in production means every unhandled failure reaches
+  // the log and nowhere else — see backend/integrations/error-reporting.ts.
+  SENTRY_DSN: z.string().optional(),
+  // Stamped on error reports so an issue can be tied to a deploy. Vercel sets
+  // VERCEL_GIT_COMMIT_SHA; anywhere else this is just "dev".
+  RELEASE_ID: z.string().default(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev"),
+
   // Legacy (marketing GMS) — kept working, unrelated to ERP
   ADMIN_PASSWORD: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),

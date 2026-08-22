@@ -117,7 +117,11 @@ export const logger = {
     emit("error", message, withError);
     if (reportError) {
       try {
-        reportError(err, fields);
+        // Redacted first. The reporter sends this to somebody else's servers,
+        // so it must not be the one path where a password or a parent's email
+        // address leaves the building — which is exactly what it was while
+        // nothing was plugged into the seam and nobody could tell.
+        reportError(err, redact(fields) as LogFields);
       } catch {
         // A broken error reporter must not become the error. Swallowing here is
         // the one place it is right: the log line above already went out.

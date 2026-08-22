@@ -15,6 +15,7 @@ import type {
   ViewTokenResponse,
 } from "@/shared/types/cctv.types";
 import { env } from "@/config/env";
+import { logger } from "@/backend/utils/logger.util";
 
 const VIEW_TOKEN_TTL = 60; // seconds
 
@@ -189,6 +190,11 @@ export const cctvService = {
     });
 
     if (!decision.allowed) {
+      // Every denial is already in CctvViewLog; this puts it in the log stream
+      // too, because the thing worth alerting on is a *rate* of these. One
+      // parent outside school hours is ordinary. Fifty in a minute is someone
+      // walking camera ids.
+      logger.warn("CCTV view denied", { userId, cameraId, reason: decision.reason });
       throw new ForbiddenError(reasonMessage(decision.reason));
     }
 
