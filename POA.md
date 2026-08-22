@@ -323,7 +323,22 @@ what happens to already-published photographs when consent is withdrawn — toda
 withdrawal stops new posts and does not unpublish old ones, which is a reading
 and should be a stated one.
 
-### 3.3 Privacy and legal
+### 3.3 Privacy and legal — **groundwork done, the rest needs a lawyer**
+
+`docs/ops/data-inventory.md` is the engineering half: every category of data
+subject, every store it lives in, every third party it reaches (four, and each
+one is a driver behind a single interface, so the list is enumerable rather than
+a guess), how access is enforced, and what consent exists. Questions that are
+legal rather than technical are marked as such rather than answered.
+
+It ends with eight stated gaps. Five of them look launch-blocking from here: no
+erasure path at all, no subject-access path, no DPIA for the CCTV plane, no
+named controller or breach procedure, and no retention period for a child's
+records.
+
+Original text follows, unchanged, because the work below is still the work:
+
+
 
 For children's biometric-adjacent data and CCTV, in India this touches the DPDP
 Act 2023 and its provisions on children's data and verifiable parental consent.

@@ -10,8 +10,12 @@
  * fetched. A parent's bootstrap contains no staff records, no other family's
  * invoices, and no audit trail, because those queries do not run for them.
  *
- * The mobile app deliberately does NOT use this: it fetches per screen, since a
- * phone on a train should not wait for the whole school.
+ * A mobile app should NOT use this — it should fetch per screen, since a phone
+ * on a train has no business waiting for the whole school. That app does not
+ * exist yet, and this sentence used to be written as though it did; the
+ * `mobile` npm script pointed at a workspace that was never created and has
+ * been removed. What does exist for it: `DeviceToken` registration, the push
+ * sender, and per-resource endpoints that already take filters.
  */
 import { feeService } from "./fee.service";
 import { feedService } from "./feed.service";

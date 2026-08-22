@@ -136,7 +136,8 @@ export const opsService = {
   },
 
   /**
-   * The Expo app calls this on every launch. Keyed on the push token so
+   * An Expo app would call this on every launch — there is no such app yet, and
+   * this endpoint is what it will need first. Keyed on the push token so
    * reinstalling replaces the row instead of accumulating dead devices — and so
    * a token that moved to a different account follows the account.
    */
