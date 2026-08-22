@@ -38,7 +38,7 @@ broken at all**.
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
 | Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
 | Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
-| Compliance & DR | 20% | No retention policy, no backup drill, no DPIA. |
+| Compliance & DR | 45% | Retention job runs; consent captured. No backup drill, no DPIA. |
 | Mobile app | 0% | Referenced in scripts and docs; does not exist. |
 
 ### What is already closed
@@ -64,7 +64,7 @@ Verified by tests that fail against the previous code, not by inspection:
 - Emergency broadcasts wrote a row and reached nobody.
 - There was no way to upload a photograph at all, and no consent to publish one.
 
-431 assertions total: 213 unit, 218 integration.
+452 assertions total: 213 unit, 239 integration.
 
 ---
 
@@ -277,24 +277,51 @@ docstring describing absent software both mislead the next person.
 Nothing here has been started, and this is a product holding children's medical
 records and live video of them.
 
-### 3.1 Backups and recovery
+### 3.1 Backups and recovery — **still open, and it needs a person**
 
-Neon offers point-in-time restore — confirm it is enabled, and confirm the
-retention window. Then **actually restore into a scratch database and run the
-integration suite against it.** A backup nobody has restored is a hypothesis.
+Neon offers point-in-time restore; nobody here can confirm it is switched on,
+what the window is, or that a restore works. That needs the Neon console.
 
-Write the runbook: how to restore, expected RTO/RPO, who is called.
+The drill is written down in `docs/ops/retention.md`: restore into a scratch
+database, point `DATABASE_URL` at it, run the 218 integration assertions against
+it, and record the RTO and RPO the restore actually achieved rather than the
+ones the marketing page claims. **A backup nobody has restored is a
+hypothesis.**
 
-### 3.2 Data retention
+### 3.2 Data retention ✅ **half done, 2026-08-22**
 
-No policy exists, and CCTV footage has none by default.
+The half that is code is done and runs nightly —
+`GET /api/cron/retention`, Vercel Cron at 21:00 UTC (02:30 in Kolkata),
+authenticated by `CRON_SECRET`, and in production a missing secret means nobody
+may call it: an endpoint that deletes rows and defaults to open is worse than a
+job that never runs.
 
-- How long is footage kept? (Typically 30 days for a nursery; take advice.)
-- Automatic deletion when a child leaves, and a defensible archive for what must
-  be kept.
-- `CctvViewLog` grows without bound; it is also the record proving who watched
-  what, so it needs a deliberate retention period rather than an accidental one.
-- `RateLimit` rows: `pruneRateLimits()` exists and nothing calls it. Schedule it.
+| What | Kept for |
+|---|---|
+| Rate-limit counters (`pruneRateLimits`, written months ago and never called) | 24 hours |
+| Password reset tokens | 7 days past expiry |
+| CCTV view log — the record of who watched which child | `CCTV_LOG_RETENTION_DAYS`, default 365 |
+| Notification delivery records | `DELIVERY_LOG_RETENTION_DAYS`, default 180 |
+| Read notifications | `NOTIFICATION_RETENTION_DAYS`, default 120 |
+
+An **unread** notification is never deleted, whatever its age: an unread
+emergency broadcast from four months ago is something somebody should still see,
+and deleting it hides the failure rather than fixing it.
+
+Nothing about a child is touched — records, medical notes, invoices,
+photographs, messages. Deleting those when a family leaves is a real legal
+question, and answering it in a cron job would be answering it by accident.
+
+21 integration assertions, weighted towards what must *stay*: a retention job
+that deletes slightly too much is a data-loss incident. Making the notification
+prune ignore the read flag turns one red.
+
+**Still open**, listed in full in `docs/ops/retention.md`: how long a child's
+records are kept after they leave, what is archived rather than deleted, what
+the CCTV recorder itself is set to (nothing in this repository controls it), and
+what happens to already-published photographs when consent is withdrawn — today
+withdrawal stops new posts and does not unpublish old ones, which is a reading
+and should be a stated one.
 
 ### 3.3 Privacy and legal
 
@@ -432,7 +459,8 @@ paying an invoice.
 | ~~3~~ | ~~Audit trail scoping~~ | done | ✅ |
 | ~~4~~ | ~~Account recovery + email provider~~ | done | ✅ (needs Vercel env) |
 | ~~5~~ | ~~Notification delivery~~ | done | ✅ (no SMS provider) |
-| 6 | Backups, restore drill, retention | 3 d | Yes |
+| 6 | Backups + restore drill | 3 d | Yes — needs Neon access |
+| ~~6b~~ | ~~Retention job~~ | done | ✅ (policy questions open) |
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
 | ~~8~~ | ~~Error tracking + alerting~~ | done | ✅ (rules to be created) |
 | ~~9~~ | ~~Photo storage with signed URLs~~ | done | ✅ (no UI, no video) |

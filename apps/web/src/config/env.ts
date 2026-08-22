@@ -73,6 +73,20 @@ const schema = z.object({
   // VERCEL_GIT_COMMIT_SHA; anywhere else this is just "dev".
   RELEASE_ID: z.string().default(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev"),
 
+  // How long operational records are kept, in days. Defaults are a starting
+  // position, not advice: a school's own retention policy overrides them, and
+  // the CCTV access log in particular is the record that answers "who watched
+  // this child" — see docs/ops/retention.md.
+  CCTV_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
+  DELIVERY_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(180),
+  NOTIFICATION_RETENTION_DAYS: z.coerce.number().int().positive().default(120),
+
+  // Shared secret Vercel Cron presents when calling scheduled endpoints. Absent
+  // in production means those endpoints refuse everybody, which is the right
+  // way round: an unauthenticated endpoint that deletes rows is worse than a
+  // retention job that did not run.
+  CRON_SECRET: z.string().optional(),
+
   // Legacy (marketing GMS) — kept working, unrelated to ERP
   ADMIN_PASSWORD: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
