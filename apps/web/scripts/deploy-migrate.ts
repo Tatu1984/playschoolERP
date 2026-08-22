@@ -21,13 +21,106 @@
  */
 import "dotenv/config";
 import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/backend/database/generated";
-import { inspect, markable, render } from "./lib/baseline";
+import { inspect, markable, migrationNames, render } from "./lib/baseline";
 
 const HERE = path.join(__dirname, "..");
 const OPTED_IN = /^(1|true|yes)$/i.test(process.env.BASELINE_ON_DEPLOY ?? "");
+const ADOPT = /^(1|true|yes)$/i.test(process.env.ADOPT_ON_DEPLOY ?? "");
+
+/**
+ * Statements that lose something. An adoption is meant to be additive — the
+ * database gains the tables it never had — and anything here means the schema
+ * has moved *away* from what is deployed, which is a migration to write by hand
+ * rather than a gap to close automatically.
+ */
+const DESTRUCTIVE = /\b(DROP\s+(TABLE|COLUMN|TYPE|SCHEMA|DATABASE)|TRUNCATE|DELETE\s+FROM|ALTER\s+COLUMN\s+"?\w+"?\s+(SET\s+DATA\s+)?TYPE)\b/i;
+
+/** The SQL that would bring the live database up to the schema. */
+function diffToSchema(): string {
+  return execFileSync(
+    "npx",
+    [
+      "prisma",
+      "migrate",
+      "diff",
+      "--from-config-datasource",
+      "--to-schema",
+      "src/backend/database/prisma/schema.prisma",
+      "--script",
+    ],
+    { cwd: HERE, encoding: "utf8", env: process.env },
+  );
+}
+
+/**
+ * Bring a database that predates the migration history up to the schema, then
+ * record every migration as applied.
+ *
+ * This is the case where the database is not merely behind — it never had most
+ * of these tables, because it was pushed from a much older schema. No migration
+ * describes the journey from there to here, so there is nothing to "resolve":
+ * the gap is computed, shown in full, and applied in one transaction.
+ *
+ * Two guards, both absolute. It refuses if the gap contains anything
+ * destructive, and it runs the whole thing inside BEGIN/COMMIT so a failure
+ * halfway leaves the database exactly as it was.
+ */
+function adopt(): void {
+  console.log("\nComputing what this database is missing…\n");
+  const sql = diffToSchema();
+
+  if (sql.trim().length === 0) {
+    console.log("Nothing missing — the schema already matches.");
+    return;
+  }
+
+  const destructive = sql
+    .split("\n")
+    .filter((line) => DESTRUCTIVE.test(line))
+    .slice(0, 10);
+
+  if (destructive.length > 0) {
+    console.error(
+      "Refusing to adopt. Closing this gap would run statements that lose data:\n" +
+        destructive.map((l) => `    ${l.trim()}`).join("\n") +
+        "\n\nThat is a migration to write and review by hand, not a gap to close\n" +
+        "automatically. Nothing has been changed.",
+    );
+    process.exit(1);
+  }
+
+  console.log(sql);
+  console.log(
+    `\nThe above is additive only — ${(sql.match(/^CREATE TABLE/gm) ?? []).length} tables, ` +
+      `${(sql.match(/^CREATE TYPE/gm) ?? []).length} types, ` +
+      `${(sql.match(/ADD COLUMN/g) ?? []).length} columns. Applying it in one transaction.\n`,
+  );
+
+  const file = path.join(mkdtempSync(path.join(tmpdir(), "adopt-")), "adopt.sql");
+  writeFileSync(file, `BEGIN;\n${sql}\nCOMMIT;\n`);
+
+  execFileSync("npx", ["prisma", "db", "execute", "--file", file], {
+    cwd: HERE,
+    stdio: ["ignore", "inherit", "inherit"],
+    env: process.env,
+  });
+
+  console.log("Applied. Recording every migration as part of this database's history:\n");
+  for (const name of migrationNames()) {
+    process.stdout.write(`  marking ${name} … `);
+    execFileSync("npx", ["prisma", "migrate", "resolve", "--applied", name], {
+      cwd: HERE,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+    });
+    console.log("done");
+  }
+}
 
 function deploy(): { ok: boolean; output: string } {
   const run = spawnSync("npx", ["prisma", "migrate", "deploy"], {
@@ -67,12 +160,31 @@ async function main() {
   const toMark = markable(verdicts);
 
   if (partial.length > 0) {
-    console.log(
-      "\nA half-applied migration is a state no migration describes. Baselining\n" +
-        "past it would hide the missing half for ever, so this stops here even if\n" +
-        "BASELINE_ON_DEPLOY is set. Somebody needs to look at the database.",
-    );
-    process.exit(1);
+    // A migration that is only half there means this database predates the
+    // migration history rather than lagging behind it — it was pushed from a
+    // much older schema, so no migration describes how it got to where it is.
+    // Marking anything applied would hide the missing half for ever, so
+    // baselining is off the table; the gap has to be computed instead.
+    if (!ADOPT) {
+      console.log(
+        "\nA half-applied migration means this database predates the migration\n" +
+          "history: it was created from an older schema, and no migration describes\n" +
+          "the journey from there to here. Baselining would hide the missing half\n" +
+          "for ever, so it is refused — including with BASELINE_ON_DEPLOY set.\n\n" +
+          "What fits this case is adoption: compute the gap between what the\n" +
+          "database has and what the schema says, show it, and apply it in one\n" +
+          "transaction. It refuses outright if closing the gap would drop anything.\n\n" +
+          "    Set ADOPT_ON_DEPLOY=1 and deploy again — then remove it.\n\n" +
+          "The full SQL is printed before it runs, so the build log is the review.",
+      );
+      process.exit(1);
+    }
+
+    adopt();
+    console.log("\nAdopted. Confirming there is nothing left to migrate:\n");
+    if (!deploy().ok) process.exit(1);
+    console.log("\nRemove ADOPT_ON_DEPLOY now — it has done its one job.");
+    return;
   }
 
   if (!OPTED_IN) {

@@ -78,9 +78,24 @@ npm run db:baseline -- --apply  # then act
 ```
 
 The report is the point. `present` means safe to mark as applied; `missing`
-means `migrate deploy` should run it; **`partial` means stop** — a half-applied
-migration is a state no migration describes, and marking it applied would hide
-the missing half for ever.
+means `migrate deploy` should run it; `partial` means the database **predates**
+the migration history rather than lagging behind it — it was pushed from a much
+older schema, so no migration describes how it got where it is.
+
+**If anything says `partial`,** baselining is refused (it would hide the missing
+half for ever) and the fix is adoption instead: compute the gap between what the
+database has and what the schema says, print it, and apply it in one
+transaction.
+
+1. Vercel → add `ADOPT_ON_DEPLOY=1`.
+2. Redeploy. The build prints the whole SQL before running it — the build log is
+   the review — and refuses outright if closing the gap would drop anything.
+3. **Delete the variable.**
+
+This is additive by construction: the database gains the tables it never had and
+loses nothing. Verified against a copy of production in exactly that state — 58
+tables, 33 types, 3 columns added, then 254 integration assertions green against
+the result.
 
 Never baseline by marking everything applied without looking. If the database is
 behind, those migrations are lost, and the first request touching a missing
