@@ -88,6 +88,12 @@ const principalUserId = new Map<string, string>();
 async function wipe() {
   // Children first. Cascades would cover most of this, but being explicit means
   // a half-renamed model fails loudly here instead of leaving orphans behind.
+  //
+  // The timeouts are for a database that is not on this machine. Prisma waits
+  // two seconds to start a transaction and five to finish one, which is ample
+  // over a socket and nowhere near enough against a managed Postgres an ocean
+  // away — where this failed with P2028 while seeding production for the first
+  // time. Sixty seconds costs nothing when it is not needed.
   await prisma.$transaction([
     prisma.cctvViewLog.deleteMany(),
     prisma.cameraAccessGrant.deleteMany(),
@@ -151,7 +157,7 @@ async function wipe() {
     prisma.refreshToken.deleteMany(),
     prisma.user.deleteMany(),
     prisma.branch.deleteMany(),
-  ]);
+  ], { maxWait: 30_000, timeout: 120_000 });
 }
 
 async function main() {
