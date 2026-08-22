@@ -47,6 +47,34 @@ import type {
 const ADMINS: Role[] = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
 const SETTINGS_ID = "singleton";
 
+/**
+ * What a school looks like before anybody has filled in the settings screen.
+ * Deliberately generic: a placeholder name is obviously a placeholder, whereas
+ * a hard-coded "Climb Kiddo" in a product sold to a second school is a bug
+ * nobody notices until a parent sees it.
+ */
+const DEFAULT_SETTINGS: SchoolSettings = {
+  schoolName: "Your school",
+  tagline: "",
+  supportEmail: "",
+  supportPhone: "",
+  whatsapp: "",
+  address: "",
+  academicYear: "",
+  currency: "INR",
+  timezone: "Asia/Kolkata",
+  locale: "en",
+  features: {
+    cctv: true,
+    kidsZone: true,
+    onlinePayments: true,
+    messaging: true,
+    admissionsOnline: true,
+    seasonalTheme: false,
+  },
+  seasonalTheme: "none",
+};
+
 export const opsService = {
   // ------------------------------------------------------- notifications
   async listNotifications(scope: Scope, limit = 50): Promise<AppNotification[]> {
@@ -288,20 +316,40 @@ export const opsService = {
     return toRoleDefinition(row, count);
   },
 
+  /**
+   * The school's own details. Defaults rather than a 404 when the row is
+   * missing, the same way `preferences()` above works — and for a much sharper
+   * reason than tidiness.
+   *
+   * The bootstrap loads this for every role, so a throw here is not a missing
+   * settings screen: it is every portal, for everybody, answering 500. A fresh
+   * production database has migrations applied and no rows, which is exactly
+   * the state a first deploy is in — found by pointing the load-test harness at
+   * an unseeded database, which is the sort of thing a load test is quietly
+   * good for.
+   */
   async settings(): Promise<SchoolSettings> {
     const row = await prisma.schoolSettings.findUnique({ where: { id: SETTINGS_ID } });
-    if (!row) throw new NotFoundError("School settings have not been set up");
-    return toSchoolSettings(row);
+    return row ? toSchoolSettings(row) : DEFAULT_SETTINGS;
   },
 
   async updateSettings(scope: Scope, input: SettingsInput): Promise<SchoolSettings> {
     requireRole(scope.role, ADMINS);
     const { features, ...rest } = input;
-    const row = await prisma.schoolSettings.update({
+    // Upsert, not update: the row may not exist yet on a fresh deployment, and
+    // an admin filling in the settings screen is exactly how it comes to.
+    const row = await prisma.schoolSettings.upsert({
       where: { id: SETTINGS_ID },
-      data: {
+      update: {
         ...rest,
         ...(features ? { features: features as unknown as Prisma.InputJsonValue } : {}),
+      },
+      create: {
+        id: SETTINGS_ID,
+        ...DEFAULT_SETTINGS,
+        ...rest,
+        features: (features ?? DEFAULT_SETTINGS.features) as unknown as Prisma.InputJsonValue,
+        locale: rest.locale ?? DEFAULT_SETTINGS.locale,
       },
     });
     return toSchoolSettings(row);

@@ -36,7 +36,7 @@ broken at all**.
 | Backend testing | 80% | 111 integration assertions against real Postgres. |
 | Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
-| Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
+| Scale | 75% | Windows measured, not guessed. Client-store architecture unchanged. |
 | Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
 | Compliance & DR | 45% | Retention job runs; consent captured. No backup drill, no DPIA. |
 | Mobile app | 0% | Referenced in scripts and docs; does not exist. |
@@ -420,13 +420,32 @@ endpoints — which already exist, already take filters, and are already scoped.
 Keep the store for genuinely global reference data. This is incremental; it does
 not need a rewrite.
 
-### 4.3 Load testing
+### 4.3 Load testing ✅ **done, 2026-08-22**
 
-No performance work has been done against realistic volume. Seed a database with
-400 students, a year of attendance, and two years of messages, then measure
-bootstrap, the admin dashboard, and the analytics snapshot. Set the windows and
-caps from measurements rather than from the guesses currently in
-`bootstrap.service.ts`.
+`npm run load:seed` fills a scratch database with a real year — 400 children,
+100,000 attendance rows, 24,000 messages — and `npm run load:measure` times the
+queries a portal load waits on. Both refuse to touch a database whose name does
+not end in `_load`.
+
+What it found: the bootstrap was never slow, it was **enormous**. An admin's
+snapshot was 7.95MB — about twenty seconds on 3G at a school gate — and it was
+*truncated*, hitting both the attendance and message caps in one ordinary year.
+Slow and incomplete at the same time.
+
+Admins now get a 21-day window instead of 120 (`ADMIN_WINDOW_DAYS`): 2.39MB,
+67ms, complete. An admin's screens ask "how is the school today"; the term-scale
+questions belong to the analytics snapshot, which aggregates server-side in 3ms.
+A parent's window stays at 120 days, because a parent's window is one child and
+one child is 60KB.
+
+It also found a first-deploy landmine that had nothing to do with load: with
+migrations applied and no rows, `opsService.settings()` threw and the bootstrap
+500'd **for every role**. Settings now fall back to defaults and the settings
+screen upserts. A load test that only measures is half a load test.
+
+Numbers, method and what is still unmeasured (concurrency, Neon's latency, cold
+starts) are in `docs/ops/load-test.md`. Attendance is still two-thirds of an
+admin's payload — that is what §4.2 should be aimed at, and measured against.
 
 ### 4.4 Frontend and end-to-end testing
 
@@ -465,7 +484,7 @@ paying an invoice.
 | ~~8~~ | ~~Error tracking + alerting~~ | done | ✅ (rules to be created) |
 | ~~9~~ | ~~Photo storage with signed URLs~~ | done | ✅ (no UI, no video) |
 | ~~10~~ | ~~Surface `coverage`~~ | done | ✅ |
-| 11 | Load testing, then tune windows | 3 d | No |
+| ~~11~~ | ~~Load testing, then tune windows~~ | done | ✅ |
 | 12 | Playwright E2E | 4 d | No |
 | 13 | Per-screen fetching | 5–10 d | No |
 | 14 | Penetration test | external | Yes, before CCTV goes live |

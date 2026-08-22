@@ -48,6 +48,26 @@ import type { Message } from "@/shared/types/engagement.types";
 const WINDOW_DAYS = 120;
 
 /**
+ * Admins get a much shorter one, and this number came from a measurement
+ * rather than from an opinion.
+ *
+ * At 400 children with a year of registers, a 120-day window handed an admin
+ * **8MB on every portal load** — twenty seconds on a 3G connection at the
+ * school gate — and it was *still* truncated, because both the attendance and
+ * message caps were hit. Eight megabytes of incomplete data is the worst of
+ * both: slow and wrong.
+ *
+ * An admin's screens ask "how is the school today": who is in, what is
+ * outstanding, what happened this week. The term-scale questions are answered
+ * by the analytics snapshot, which aggregates server-side, and the
+ * per-resource endpoints, which take filters. A parent's window stays long
+ * because a parent's window is one child — 60KB of it.
+ *
+ * See scripts/load-measure.ts, and docs/ops/load-test.md for the numbers.
+ */
+const ADMIN_WINDOW_DAYS = 21;
+
+/**
  * Backstops, in case a window is not enough on its own — a very large school,
  * or a chatty term. Hitting one is reported rather than passed off as the whole
  * set: a client that cannot tell a complete answer from a truncated one will
@@ -97,7 +117,8 @@ export const bootstrapService = {
     const isStaff = isAdmin || scope.role === ROLES.TEACHER;
     const isParent = scope.role === ROLES.PARENT;
 
-    const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000);
+    const windowDays = isAdmin ? ADMIN_WINDOW_DAYS : WINDOW_DAYS;
+    const since = new Date(Date.now() - windowDays * 86_400_000);
     const sinceKey = since.toISOString().slice(0, 10);
 
     const [
@@ -255,7 +276,7 @@ export const bootstrapService = {
       .map(([name]) => name as string);
 
     if (truncated.length) {
-      logger.warn("Bootstrap snapshot hit a cap", { truncated, role: scope.role, windowDays: WINDOW_DAYS });
+      logger.warn("Bootstrap snapshot hit a cap", { truncated, role: scope.role, windowDays });
     }
 
     return {

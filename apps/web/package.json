@@ -34,7 +34,9 @@
     "check:media": "tsx tests/integration/media.test.ts",
     "check:image-metadata": "tsx tests/unit/image-metadata.test.ts",
     "check:coverage-note": "tsx tests/unit/coverage.test.ts",
-    "check:retention": "tsx tests/integration/retention.test.ts"
+    "check:retention": "tsx tests/integration/retention.test.ts",
+    "load:seed": "tsx scripts/load-seed.ts",
+    "load:measure": "tsx scripts/load-measure.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
