@@ -29,7 +29,7 @@
     "check:password-reset": "tsx tests/integration/password-reset.test.ts",
     "check:notifications": "tsx tests/integration/notifications.test.ts",
     "check:notification-policy": "tsx tests/unit/notification-policy.test.ts",
-    "build:vercel": "prisma migrate deploy && prisma generate && next build",
+    "build:vercel": "tsx scripts/deploy-migrate.ts && prisma generate && next build",
     "check:error-reporting": "tsx tests/unit/error-reporting.test.ts",
     "check:media": "tsx tests/integration/media.test.ts",
     "check:image-metadata": "tsx tests/unit/image-metadata.test.ts",

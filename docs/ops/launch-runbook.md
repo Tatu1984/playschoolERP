@@ -56,21 +56,25 @@ previews their own Neon branch database or know that this is true.
 **If the build fails with `P3005 — The database schema is not empty`,** the
 database was created with `prisma db push` and so has tables but no migration
 history. Prisma refuses to run migrations against a database whose history it
-cannot see, which is the right instinct. Teach it the history once, from a
-machine holding the production `DATABASE_URL`:
+cannot see, which is the right instinct.
+
+The failed build now prints what the database actually contains — which
+migrations are already there and which are not — and there are two ways to fix
+it. **The easier one needs no terminal at all:**
+
+1. Vercel → Settings → Environment Variables → add `BASELINE_ON_DEPLOY=1`.
+2. Redeploy. The build records the migrations already present, runs the ones
+   genuinely missing, and says so line by line.
+3. **Delete the variable.** It has done its one job.
+
+Or, from a machine holding the production `DATABASE_URL`:
 
 ```bash
 cd apps/web
 export DATABASE_URL="postgresql://…neon…"
 
-# 1. Look first. Reads every migration, works out which tables, columns and
-#    enum types it creates, and asks the database whether they are there.
-npm run db:baseline
-
-# 2. If nothing came back "partial", mark what is already there as applied.
-npm run db:baseline -- --apply
-
-# 3. Redeploy. `migrate deploy` now runs only what is genuinely missing.
+npm run db:baseline             # look first; changes nothing
+npm run db:baseline -- --apply  # then act
 ```
 
 The report is the point. `present` means safe to mark as applied; `missing`
