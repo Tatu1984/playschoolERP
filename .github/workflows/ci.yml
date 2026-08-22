@@ -78,3 +78,54 @@ jobs:
         working-directory: apps/web
       - run: npm run db:seed --workspace=@climbkiddo/web
       - run: npm run test:integration --workspace=@climbkiddo/web
+
+  # The four paths a school notices within a day: signing in as each role, a
+  # family enquiring, a parent paying, a parent opening the camera. Everything
+  # else is tested below the browser — this job exists for the failures only a
+  # browser sees, like a form that posts and a cookie that never comes back.
+  e2e:
+    name: Browser journeys
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: playschool
+          POSTGRES_PASSWORD: playschool
+          POSTGRES_DB: playschool
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://playschool:playschool@localhost:5432/playschool
+      # The suite signs in as seeded users; the secrets only need to exist and
+      # be stable across the build and the server it starts.
+      AUTH_SECRET: ci-only-not-a-real-secret
+      CCTV_TOKEN_SECRET: ci-only-not-a-real-secret
+      CCTV_INTERNAL_SECRET: ci-only-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/web
+      - run: npm run db:seed --workspace=@climbkiddo/web
+      # Chromium only. Three engines would triple the minutes to catch bugs
+      # this product has never had.
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run e2e --workspace=@climbkiddo/web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

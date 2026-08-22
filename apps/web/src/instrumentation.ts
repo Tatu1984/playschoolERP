@@ -49,6 +49,13 @@ export async function onRequestError(
   request: { path: string; method: string },
   context: { routerKind: string; routePath: string; routeType: string },
 ) {
+  // A browser that navigates away mid-render aborts the response stream, and
+  // Next surfaces that here as an error. It is not one: nobody is affected, it
+  // happens constantly on a school's wifi, and reporting it would bury the real
+  // errors under noise from people closing tabs.
+  const message = error instanceof Error ? error.message : String(error);
+  if (/destination stream closed early|aborted|ECONNRESET/i.test(message)) return;
+
   // The path can carry a reset token or a child's id in the query string, so
   // only the route pattern is reported — `/parent/children/[id]`, not the id.
   logger.error("Unhandled error while serving a request", error, {

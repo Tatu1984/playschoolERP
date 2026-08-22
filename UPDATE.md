@@ -40,7 +40,7 @@ curl -s http://localhost:9997/v3/paths/list | grep -o '"ready":true'   # -> clas
 | Role | Email | Lands on | Also reachable |
 |---|---|---|---|
 | Admin | `admin@climbkiddo.in` | `/admin` | `/teacher` (preview), `/kids` |
-| Teacher | `teacher@climbkiddo.in` | `/teacher` | `/kids` |
+| Teacher | `meera@climbkiddo.in` | `/teacher` | `/kids` |
 | Parent | `parent@example.com` | `/parent` | `/parent/cctv`, `/kids` |
 
 If demo data is ever wiped: `npm run db:push && npm run db:seed`.

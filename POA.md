@@ -34,7 +34,7 @@ broken at all**.
 | Dependencies | 95% | Zero high-severity in runtime deps; CI fails on a new one. |
 | Transport & headers | 75% | Enforced frame-ancestors/HSTS/nosniff. Full CSP still report-only. |
 | Backend testing | 80% | 111 integration assertions against real Postgres. |
-| Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
+| Frontend/E2E testing | 60% | 11 browser journeys in CI, plus the reducer suites. |
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
 | Scale | 75% | Windows measured, not guessed. Client-store architecture unchanged. |
 | Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
@@ -64,7 +64,7 @@ Verified by tests that fail against the previous code, not by inspection:
 - Emergency broadcasts wrote a row and reached nobody.
 - There was no way to upload a photograph at all, and no consent to publish one.
 
-452 assertions total: 213 unit, 239 integration.
+452 assertions plus 11 browser journeys: 213 unit, 239 integration, 11 e2e.
 
 ---
 
@@ -462,14 +462,34 @@ Numbers, method and what is still unmeasured (concurrency, Neon's latency, cold
 starts) are in `docs/ops/load-test.md`. Attendance is still two-thirds of an
 admin's payload — that is what §4.2 should be aimed at, and measured against.
 
-### 4.4 Frontend and end-to-end testing
+### 4.4 End-to-end testing ✅ **done, 2026-08-22**
 
-Backend coverage is now reasonable; the frontend has two reducer suites and no
-browser test. Add Playwright over the paths that must never break: sign in as
-each role, a parent watching a camera, an admission through the public form, and
-paying an invoice.
+Playwright over the paths that must never break: signing in as each of the
+three roles and landing on the right portal, the wrong password being refused,
+a signed-out visitor bounced off `/parent`, a parent bounced off `/admin`,
+signing out actually signing out, a family enquiring from the public site, a
+parent paying an invoice and getting a receipt, and the camera page saying where
+the stream stands. Eleven tests, `npm run e2e`, and a CI job that builds the app
+and runs them against real Postgres.
 
----
+Two things it taught immediately:
+
+- **The login rate limiter blocked the suite** — six sign-ins from one address
+  in a minute is exactly what `LOGIN_IP_LIMIT` is for. The fix was not to loosen
+  it: a global setup resets the counter and mints one session per role, so the
+  sign-in path is exercised in one place rather than as a prerequisite of every
+  test.
+- **`onRequestError` was reporting people closing tabs.** A browser navigating
+  away mid-render aborts the stream, Next surfaces it as an error, and it would
+  have buried real errors under noise from a school's wifi. Filtered.
+
+The payment test issues its own invoice through the real endpoint as an admin
+first, because the seeded family has nothing due and a test that passes by
+finding nothing to do is not a test.
+
+**Still open:** the CCTV assertion is deliberately shallow — it checks the page
+explains itself, because MediaMTX is not running in CI. Watching an actual frame
+needs the media plane in the loop, which is a different kind of test.
 
 ## 6. Phase 5 — Pre-launch (est. 1 week)
 
@@ -500,7 +520,7 @@ paying an invoice.
 | ~~9~~ | ~~Photo storage with signed URLs~~ | done | ✅ (no UI, no video) |
 | ~~10~~ | ~~Surface `coverage`~~ | done | ✅ |
 | ~~11~~ | ~~Load testing, then tune windows~~ | done | ✅ |
-| 12 | Playwright E2E | 4 d | No |
+| ~~12~~ | ~~Playwright E2E~~ | done | ✅ |
 | 13 | Per-screen fetching | 5–10 d | No |
 | 14 | Penetration test | external | Yes, before CCTV goes live |
 | 15 | Accessibility audit | 3 d | No |
