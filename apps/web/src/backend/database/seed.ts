@@ -289,6 +289,33 @@ async function main() {
     })),
   });
 
+  // Photo consent, recorded for every seeded family but one.
+  //
+  // The product refuses to photograph a child with no consent on file, which is
+  // the right default and would otherwise make the demo feed look broken. One
+  // child is deliberately left as a refusal: the behaviour that matters — a
+  // teacher being told which child to leave out of a photographed post — should
+  // be visible in the demo rather than only in the tests.
+  const [refusedChild, ...consenting] = STUDENTS;
+  await prisma.photoConsent.createMany({
+    data: [
+      {
+        studentId: refusedChild.id,
+        allowed: false,
+        decidedByName: "Parent (at admission)",
+        note: "Family asked that no photographs be published.",
+        decidedAt: dReq(refusedChild.enrolledOn),
+      },
+      ...consenting.map((s) => ({
+        studentId: s.id,
+        allowed: true,
+        decidedByName: "Parent (at admission)",
+        decidedAt: dReq(s.enrolledOn),
+      })),
+    ],
+    skipDuplicates: true,
+  });
+
   // Every guardian gets a portal login — in a real school each parent has one,
   // and it makes all 24 families testable rather than just the demo family.
   for (const g of GUARDIANS) principalUserId.set(g.id, g.userId ?? g.id);
@@ -1028,6 +1055,7 @@ async function main() {
     invoices: await prisma.invoice.count(),
     messages: await prisma.message.count(),
     cameras: await prisma.camera.count(),
+    photoConsents: await prisma.photoConsent.count(),
   };
 
   console.log("✅ Seed complete");

@@ -12,6 +12,7 @@
  */
 import { type Prisma } from "@/backend/database/client";
 import { feedRepository } from "@/backend/repositories/feed.repository";
+import { mediaService } from "@/backend/services/media.service";
 import { toActivity, toNotice } from "@/backend/mappers";
 import { ForbiddenError, NotFoundError } from "@/backend/utils/error-handler.util";
 import { requireRole } from "@/backend/utils/rbac.util";
@@ -66,6 +67,14 @@ export const feedService = {
       throw new ForbiddenError("That classroom is not yours to post in");
     }
     const { studentIds, media, ...rest } = input;
+    // A photographed post may only name children whose families have said yes.
+    // The check is here rather than in the UI because the UI is not the thing
+    // that has to be right: this is the moment a child's photograph becomes
+    // visible to other people, and consent is the only thing standing in front
+    // of it. A post with no photographs is unaffected — a written note about a
+    // child is not a photograph of one.
+    if (media.length > 0) await mediaService.assertPhotoConsent(studentIds);
+
     const row = await feedRepository.createActivity(
       {
         ...rest,
@@ -85,6 +94,13 @@ export const feedService = {
       throw new ForbiddenError("You can only edit your own posts");
     }
     const { studentIds, media, ...rest } = input;
+    // Editing is the same moment as creating, from the child's point of view:
+    // adding a photograph to an existing post, or adding a child to a post that
+    // already has photographs, both put a face in front of other parents.
+    const willHaveMedia = media ? media.length > 0 : existingMediaCount(existing) > 0;
+    const willName = studentIds ?? existing.taggedStudents.map((t) => t.studentId);
+    if (willHaveMedia) await mediaService.assertPhotoConsent(willName);
+
     const row = await feedRepository.updateActivity(
       id,
       { ...rest, ...(media ? { media: media as Prisma.InputJsonValue } : {}) },
@@ -191,3 +207,12 @@ export const feedService = {
     return this.getNotice(scope, id);
   },
 };
+
+/**
+ * How many photographs a stored post already carries. `Activity.media` is a
+ * JSON column, so it is whatever was last written there — defended rather than
+ * trusted.
+ */
+function existingMediaCount(row: { media: unknown }): number {
+  return Array.isArray(row.media) ? row.media.length : 0;
+}

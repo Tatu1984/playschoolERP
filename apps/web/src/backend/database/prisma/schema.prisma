@@ -347,6 +347,7 @@ model Branch {
   visitBookings VisitBooking[]
   broadcasts    SafetyBroadcast[]
   auditEntries  AuditEntry[]
+  mediaObjects  MediaObject[]
 }
 
 // Static catalogue (toddlers, nursery, …). Seeded, admin-editable later.
@@ -391,6 +392,7 @@ model Classroom {
   notices    Notice[]
   lessons    Lesson[]
   staff      StaffClassroom[]
+  media      MediaObject[]
 
   @@index([branchId])
   @@index([programSlug])
@@ -445,6 +447,8 @@ model User {
   pickupAuths       PickupAuthorization[]
   passwordResets    PasswordResetToken[]
   deliveries        NotificationDelivery[]
+  uploads           MediaObject[]
+  photoConsents     PhotoConsent[]
 
   @@index([role])
   @@index([branchId])
@@ -594,6 +598,7 @@ model Student {
   gameSessions      GameSession[]
   journey           JourneyState?
   artworks          Artwork[]
+  photoConsent      PhotoConsent?
   medicalProfile    MedicalProfile?
   emergencyContacts EmergencyContact[]
 
@@ -1330,6 +1335,62 @@ model MediaAsset {
   updatedAt DateTime  @updatedAt
 
   @@index([category])
+}
+
+// A binary somebody uploaded: a photograph of a child, almost always.
+//
+// The bytes live in a *private* blob (see backend/integrations/storage.ts) and
+// `storageKey` is the only way to find them. Nothing here is a URL, because
+// there is no URL that works without going through /api/media/[id] and past a
+// scope check first — which is the whole point. A photograph of somebody's
+// two-year-old must not be one forwarded link away from being public.
+model MediaObject {
+  id           String     @id @default(cuid())
+  // Unguessable, generated. Never derived from the uploaded filename.
+  storageKey   String     @unique
+  contentType  String
+  kind         MediaKind  @default(image)
+  sizeBytes    Int
+  // Kept for display only, sanitised. Never used to build a path.
+  originalName String     @default("")
+  // Who uploaded it and where it belongs, which is what the read check uses.
+  branchId     String?
+  branch       Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  classroomId  String?
+  classroom    Classroom? @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  uploadedById String?
+  uploadedBy   User?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  // True once the metadata strip has run. A row where this is false was stored
+  // by an older path and must not be served.
+  scrubbed     Boolean    @default(true)
+  createdAt    DateTime
+
+  @@index([branchId, createdAt])
+  @@index([classroomId])
+}
+
+// May this child be photographed?
+//
+// Absence is a refusal, not a default yes. A school that has not asked has not
+// been given permission, and the DPDP Act's provisions on children's data want
+// a verifiable answer rather than an assumption. The seed records consent for
+// the demo families so the product still demonstrates.
+//
+// A refusal excludes the child from photographed posts entirely — they cannot
+// be tagged on one — rather than hiding a post that has already been taken.
+model PhotoConsent {
+  studentId     String   @id
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  allowed       Boolean
+  // Who answered, and when: a consent nobody can attribute is not verifiable.
+  decidedById   String?
+  decidedBy     User?    @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedByName String   @default("")
+  note          String   @default("")
+  decidedAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@index([allowed])
 }
 
 model Testimonial {

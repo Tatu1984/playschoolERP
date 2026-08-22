@@ -67,6 +67,14 @@ export const PUBLIC_FORM_LIMIT: RateLimit = { bucket: "public-form", max: 20, wi
 export const REGISTER_LIMIT: RateLimit = { bucket: "register", max: 5, windowSeconds: 3600 };
 
 /**
+ * Uploading photographs, counted per staff account. A classroom's worth of
+ * pictures at the end of an afternoon is a few dozen; a hundred an hour is
+ * either a bulk import that should not go through this endpoint, or a
+ * compromised account filling the school's storage bill.
+ */
+export const UPLOAD_LIMIT: RateLimit = { bucket: "media-upload", max: 100, windowSeconds: 3600 };
+
+/**
  * Asking for a password reset, counted per address. Stops one machine from
  * working through a list of parents to find out which are enrolled — the
  * endpoint answers identically either way, and this stops the volume that would

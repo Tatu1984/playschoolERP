@@ -70,3 +70,47 @@ export async function verifyViewToken(
     return null;
   }
 }
+
+// ---- Media token (short-lived, single object) -----------------------------
+
+/**
+ * The same idea as the CCTV view token, for the same reason and with the same
+ * key: a photograph of a child is reachable only with a credential that expires
+ * in minutes and names exactly one object.
+ *
+ * It exists for the clients that cannot send the session cookie — the mobile
+ * app, and anything rendering into an `<img>` outside the portal's origin. In
+ * the portal itself the cookie is sent and the route checks the session
+ * directly, which is stronger, because a token in a URL ends up in browser
+ * history and in screenshots.
+ */
+export interface MediaTokenClaims {
+  sub: string; // user id the token was minted for
+  mediaId: string;
+}
+
+export async function signMediaToken(
+  claims: MediaTokenClaims,
+  ttlSeconds = 300,
+): Promise<string> {
+  return new SignJWT({ ...claims })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${ttlSeconds}s`)
+    .sign(cctvKey);
+}
+
+export async function verifyMediaToken(
+  token: string | undefined | null,
+): Promise<MediaTokenClaims | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, cctvKey);
+    const claims = payload as unknown as MediaTokenClaims;
+    // A CCTV view token is signed with the same key and would otherwise verify
+    // here. It says `cameraId`, not `mediaId`, and must not open a photograph.
+    return claims.mediaId ? claims : null;
+  } catch {
+    return null;
+  }
+}

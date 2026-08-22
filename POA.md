@@ -37,7 +37,7 @@ broken at all**.
 | Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
 | Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
-| Core feature completeness | 70% | Notifications deliver and record. **No photo upload.** |
+| Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
 | Compliance & DR | 20% | No retention policy, no backup drill, no DPIA. |
 | Mobile app | 0% | Referenced in scripts and docs; does not exist. |
 
@@ -62,8 +62,9 @@ Verified by tests that fail against the previous code, not by inspection:
 - There was no account recovery: `/forgot-password` awaited a `setTimeout` and
   claimed a mail had been sent.
 - Emergency broadcasts wrote a row and reached nobody.
+- There was no way to upload a photograph at all, and no consent to publish one.
 
-338 assertions total: 163 unit, 175 integration.
+412 assertions total: 198 unit, 214 integration.
 
 ---
 
@@ -221,30 +222,44 @@ delivery counts are on the API and nothing renders them yet: there is no admin
 broadcast composer in the UI at all, only the endpoint. A manual end-to-end to
 a real handset needs the mobile app, which does not exist (§2.4).
 
-### 2.3 Photo and video storage — the feature parents pay for
+### 2.3 Photo storage ✅ **done, 2026-08-22** (video still open)
 
-Only the legacy marketing gallery accepts a file (`lib/gms/gallery.ts`, and its
-validation is sound: size cap, MIME allowlist, sanitised filename). The ERP has
-no binary upload path at all — `mediaAssets`, activity photos and artwork are
-URL metadata pointing at nothing.
+The ERP had no binary upload path at all — `mediaAssets`, activity photos and
+artwork were URL metadata pointing at nothing, so the headline feature of a
+playschool ERP did not exist.
 
-The daily photo feed is the headline feature of a playschool ERP, and it does
-not exist.
+- `POST /api/media` takes the file, `GET /api/media/[id]` serves it. The bytes
+  live in a **private** blob (`backend/integrations/storage.ts`), so there is no
+  URL to forward: the marketing gallery is public because it is advertising,
+  and these are photographs of other people's children.
+- Every read is scoped. A parent sees a photograph only through a *published
+  post one of their own children is tagged on* — not "anything at my branch",
+  which would let them walk ids through the whole campus.
+- Short-lived signed tokens (5 minutes, one object, one user) for clients that
+  cannot send the session cookie, mirroring the CCTV view token and sharing its
+  secret. A CCTV token deliberately does not open a photograph.
+- **EXIF is stripped before storage**, not on the way out
+  (`backend/utils/image-metadata.util.ts`). A nursery photograph carries the GPS
+  position of a two-year-old. Done by rewriting the container — JPEG APPn/COM,
+  PNG text chunks, WebP EXIF/XMP — so there is no native dependency to fail on a
+  platform, and no re-encode.
+- The format is read from the file's magic bytes, never the `Content-Type` or
+  the extension. SVG is refused outright: it is a document that can carry
+  script, and serving one from our own origin is serving script from our own
+  origin.
+- **Consent per child.** `PhotoConsent`, where *absence is a refusal*. A
+  photographed post may not name a child without consent on file, and the
+  refusal names them so the teacher knows who to leave out — the exclusion is
+  from the post, not a hidden post. A written note about a child is unaffected.
 
-Needs:
+35 unit assertions on the stripper (built on files that really do carry
+coordinates), 39 integration assertions on upload, scope, consent and tokens.
+Three go red against code without the strip and the consent gate.
 
-- Upload through Vercel Blob, reusing the GMS validation.
-- **Private access, not `access: "public"`.** The GMS gallery is public because
-  it is marketing. Photographs of children must not be reachable by URL alone —
-  serve them through a short-lived signed URL, the way the CCTV view token
-  already works. That pattern is in the codebase; follow it.
-- EXIF stripping on upload — location metadata in a nursery photo is a
-  disclosure of where a child is.
-- Consent per child: a parent must be able to refuse photography, and a refusal
-  must exclude that child from feed posts, not merely hide the post.
-
-**Exit:** upload/serve integration tests, including that an unsigned URL is
-refused and that a child without consent never appears.
+**Still open:** video — there is no upload path for it, and MP4 metadata
+stripping is a different problem from EXIF. No UI: this is the endpoint and the
+rules, and no screen uploads through them yet. `MediaAsset` (the CMS table)
+still holds plain URLs and is untouched.
 
 ### 2.4 Decide the mobile app
 
@@ -404,7 +419,7 @@ paying an invoice.
 | 6 | Backups, restore drill, retention | 3 d | Yes |
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
 | ~~8~~ | ~~Error tracking + alerting~~ | done | ✅ (rules to be created) |
-| 9 | Photo storage with signed URLs | 5–7 d | Feature-dependent |
+| ~~9~~ | ~~Photo storage with signed URLs~~ | done | ✅ (no UI, no video) |
 | 10 | Surface `coverage` | 2 d | No, but it is currently misleading |
 | 11 | Load testing, then tune windows | 3 d | No |
 | 12 | Playwright E2E | 4 d | No |
