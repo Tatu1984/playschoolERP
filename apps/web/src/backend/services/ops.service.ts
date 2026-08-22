@@ -9,6 +9,8 @@
  * allergy" is a question that could matter enormously one afternoon.
  */
 import { prisma, type Prisma } from "@/backend/database/client";
+import { notificationService } from "@/backend/services/notification.service";
+import { logger } from "@/backend/utils/logger.util";
 import {
   toDeviceToken,
   toEmergencyContact,
@@ -204,13 +206,40 @@ export const opsService = {
     return rows.map(toSafetyBroadcast);
   },
 
+  /**
+   * Send a safety broadcast.
+   *
+   * The in-app notifications are written here, inline, because that is the part
+   * that must survive everything else going wrong: it needs one insert per
+   * recipient and no network. Push and email are fanned out after the response
+   * (see the route), so the head teacher's "send" does not wait on four hundred
+   * handsets.
+   *
+   * A failure to write the notifications must not lose the broadcast itself —
+   * the record of what was announced is worth more than the delivery attempt —
+   * so it is logged loudly and the broadcast still returns.
+   */
   async broadcast(scope: Scope, input: BroadcastInput): Promise<SafetyBroadcast> {
     requireRole(scope.role, ADMINS);
     const row = await prisma.safetyBroadcast.create({
       data: { ...input, branchId: input.branchId ?? scope.branchId, sentByName: scope.name },
       include: { acks: { select: { userId: true } } },
     });
-    return toSafetyBroadcast(row);
+
+    try {
+      await notificationService.recordBroadcastInApp(row);
+    } catch (e) {
+      logger.error("Safety broadcast was saved but its notifications were not", e, {
+        broadcastId: row.id,
+      });
+    }
+
+    return toSafetyBroadcast(
+      await prisma.safetyBroadcast.findUniqueOrThrow({
+        where: { id: row.id },
+        include: { acks: { select: { userId: true } } },
+      }),
+    );
   },
 
   async acknowledgeBroadcast(scope: Scope, id: string): Promise<SafetyBroadcast> {

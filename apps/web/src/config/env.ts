@@ -53,6 +53,13 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Climb Kiddo <no-reply@climbkiddo.in>"),
 
+  // Push notifications (Expo, which fronts APNs and FCM). Absent outside
+  // production writes the notification to the server log; absent *in*
+  // production means nothing reaches a phone at all, and every delivery is
+  // recorded as failed rather than quietly skipped — see
+  // backend/integrations/push.ts.
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+
   // Absolute origin this deployment answers on, used to build the links that
   // go into email. A reset link is useless if it points at localhost, and
   // worse than useless if it points at somebody else's host — so this is

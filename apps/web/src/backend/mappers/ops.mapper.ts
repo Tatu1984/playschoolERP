@@ -95,6 +95,12 @@ export function toSafetyBroadcast(b: BroadcastRow): SafetyBroadcast {
     branchId: b.branchId,
     sentByName: b.sentByName,
     acknowledgedBy: (b.acks ?? []).map((a) => a.userId),
+    delivery: {
+      recipients: b.recipientCount,
+      delivered: b.deliveredCount,
+      unreached: b.failedCount,
+      finishedAt: b.deliveryFinishedAt ? iso(b.deliveryFinishedAt) : null,
+    },
     createdAt: iso(b.createdAt),
   };
 }

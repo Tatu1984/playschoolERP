@@ -57,6 +57,22 @@ export interface SafetyBroadcast extends Entity {
   branchId: ID | null;
   sentByName: string;
   acknowledgedBy: ID[];
+  /**
+   * What happened when this was sent, as opposed to whether a row was written.
+   * `finishedAt` null means delivery is still running or never ran, and the UI
+   * must say "sending" rather than "sent" — those are different facts, and for
+   * an emergency broadcast the difference is the entire point.
+   *
+   * `delivered` counts people whose phone or inbox was reached, not messages:
+   * a parent with three handsets is one. `unreached` is the number who have it
+   * in the portal and nowhere else — the list a school telephones.
+   */
+  delivery: {
+    recipients: number;
+    delivered: number;
+    unreached: number;
+    finishedAt: ISODate | null;
+  };
 }
 
 export interface MedicalProfile {

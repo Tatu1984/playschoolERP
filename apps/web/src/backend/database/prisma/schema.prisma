@@ -267,6 +267,26 @@ enum NotificationKind {
   SYSTEM
 }
 
+// How a notification can leave the building. IN_APP is the row in the portal's
+// bell menu; the rest need a provider, and a channel with no provider
+// configured is recorded as skipped rather than quietly dropped.
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+}
+
+enum DeliveryStatus {
+  SENT
+  // Deliberately not attempted: the recipient turned the channel off, muted
+  // the kind, is inside their quiet hours, or has no address for it.
+  SKIPPED
+  // Attempted and refused. The provider's reason is on the row.
+  FAILED
+}
+
 enum DevicePlatform {
   IOS
   ANDROID
@@ -424,6 +444,7 @@ model User {
   broadcastAcks     BroadcastAck[]
   pickupAuths       PickupAuthorization[]
   passwordResets    PasswordResetToken[]
+  deliveries        NotificationDelivery[]
 
   @@index([role])
   @@index([branchId])
@@ -1414,9 +1435,47 @@ model SafetyBroadcast {
   sentByName String
   createdAt  DateTime          @default(now())
 
-  acks BroadcastAck[]
+  // What actually happened when this was sent. Until these existed, "sent"
+  // meant "a row was written" — for an emergency broadcast, the one screen in
+  // this product where that distinction is the whole point.
+  //
+  // Null finishedAt means delivery has not finished (or never ran): the UI must
+  // say "sending" rather than "sent", because those are different facts.
+  recipientCount     Int       @default(0)
+  deliveredCount     Int       @default(0)
+  failedCount        Int       @default(0)
+  deliveryFinishedAt DateTime?
+
+  acks       BroadcastAck[]
+  deliveries NotificationDelivery[]
 
   @@index([createdAt])
+}
+
+// One row per recipient per channel per attempt: the record of who this
+// actually reached, and of who it did not.
+//
+// It exists because "we sent it" is not a fact a school can act on. After a
+// lockdown broadcast the question is which parents did not get it, and that
+// question needs an answer that survives the request that failed to deliver.
+model NotificationDelivery {
+  id          String              @id @default(cuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     NotificationChannel
+  status      DeliveryStatus
+  // Why it was skipped, or exactly what the provider said when it refused.
+  // Never the message body — this table is read by support staff.
+  detail      String              @default("")
+  broadcastId String?
+  broadcast   SafetyBroadcast?    @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  // Written from the application, not `@default(now())` — see the note on
+  // User.sessionsValidFrom.
+  attemptedAt DateTime
+
+  @@index([broadcastId])
+  @@index([userId, attemptedAt])
+  @@index([status])
 }
 
 model BroadcastAck {

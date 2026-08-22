@@ -23,10 +23,13 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger && npm run check:headers",
-    "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health && npm run check:bootstrap && npm run check:cctv && npm run check:fees-attendance && npm run check:password-reset",
+    "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger && npm run check:headers && npm run check:notification-policy",
+    "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health && npm run check:bootstrap && npm run check:cctv && npm run check:fees-attendance && npm run check:password-reset && npm run check:notifications",
     "check:headers": "tsx tests/unit/security-headers.test.ts",
-    "check:password-reset": "tsx tests/integration/password-reset.test.ts"
+    "check:password-reset": "tsx tests/integration/password-reset.test.ts",
+    "check:notifications": "tsx tests/integration/notifications.test.ts",
+    "check:notification-policy": "tsx tests/unit/notification-policy.test.ts",
+    "build:vercel": "prisma migrate deploy && prisma generate && next build"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -65,6 +65,10 @@ export const SAFETY_BROADCASTS: SafetyBroadcast[] = [
     branchId: "br_kathgola",
     sentByName: "School Admin",
     acknowledgedBy: ["usr_parent"],
+    // Two parents have the app installed and one has no working device: the
+    // demo store should show the same "reached / not reached" split the real
+    // delivery record produces, not a flattering one.
+    delivery: { recipients: 24, delivered: 23, unreached: 1, finishedAt: daysAgo(2, 13, 41) },
     createdAt: daysAgo(2, 13, 40),
   },
   {
@@ -75,6 +79,7 @@ export const SAFETY_BROADCASTS: SafetyBroadcast[] = [
     branchId: null,
     sentByName: "School Admin",
     acknowledgedBy: [],
+    delivery: { recipients: 34, delivered: 34, unreached: 0, finishedAt: daysAgo(11, 11, 1) },
     createdAt: daysAgo(11, 11, 0),
   },
 ];

@@ -37,7 +37,7 @@ broken at all**.
 | Frontend/E2E testing | 15% | Two reducer suites. No browser test exists. |
 | Observability | 70% | Structured logs, health check. No tracker wired, no alerting. |
 | Scale | 60% | Bootstrap bounded to a term. Client-store architecture unchanged. |
-| Core feature completeness | 55% | **No photo upload, no notification delivery.** |
+| Core feature completeness | 70% | Notifications deliver and record. **No photo upload.** |
 | Compliance & DR | 20% | No retention policy, no backup drill, no DPIA. |
 | Mobile app | 0% | Referenced in scripts and docs; does not exist. |
 
@@ -61,8 +61,9 @@ Verified by tests that fail against the previous code, not by inspection:
 - The audit trail answered every admin with every branch's entries.
 - There was no account recovery: `/forgot-password` awaited a `setTimeout` and
   claimed a mail had been sent.
+- Emergency broadcasts wrote a row and reached nobody.
 
-269 assertions total: 129 unit, 140 integration.
+326 assertions total: 151 unit, 175 integration.
 
 ---
 
@@ -182,22 +183,43 @@ decision, and this paragraph is where it is recorded.
 the wrong origin is worse than no link at all. Without them the endpoint
 refuses honestly, so this is not a silent failure.
 
-### 2.2 Notification delivery — records with no delivery
+### 2.2 Notification delivery ✅ **done, 2026-08-22**
 
-`AppNotification`, `DeviceToken`, `NotificationPreference` and `SafetyBroadcast`
-all persist correctly. Nothing sends. There is no FCM, APNs, email or SMS
-integration anywhere in the codebase.
+An emergency broadcast wrote a row and reached nobody, while the screen said it
+had gone out. Now:
 
-The sharpest case is `/api/emergency/broadcasts`: an emergency broadcast writes
-a row and reaches nobody. For a school safety feature, a UI that says "sent" and
-means "saved" is the kind of thing that matters exactly once.
+- `backend/integrations/push.ts` — Expo's push service (which fronts APNs and
+  FCM, and is what `DeviceToken.token` was always documented to hold), a console
+  driver outside production, and **off** in production with nothing configured.
+  Off means every message is a *recorded failure*, not an exception: "nobody was
+  reached" is a fact the school needs written down.
+- `notification.service.ts` fans out to the branch — staff by their own branch,
+  parents through guardianship, the same rule `resolveScope` uses. In-app rows
+  are written inline, so the portal has the message even if every provider is
+  down; push and email go out in `after()` so the head teacher's "send" does not
+  wait on four hundred handsets.
+- `NotificationDelivery`: one row per recipient per channel, with the reason.
+  After an incident the question is not "did it send" but "who did not get it",
+  and that answer now survives the request.
+- `SafetyBroadcast` carries `recipientCount`, `deliveredCount`, `failedCount`
+  and `deliveryFinishedAt`, exposed on the API as `delivery`. A null
+  `finishedAt` means "sending", not "sent".
+- Dead device tokens are deleted when the provider says `DeviceNotRegistered`,
+  so the next broadcast does not report failures that mean nothing.
+- Quiet hours and muted kinds are respected in the *school's* timezone — a
+  Vercel function runs in UTC, and 21:30 in Kolkata is otherwise three in the
+  morning. **A CRITICAL broadcast overrides both**, but still does not use a
+  channel the recipient switched off entirely; that shows up in the record so
+  the office can telephone them.
 
-Needs: a push provider behind an interface, delivery attempted on write,
-per-channel respect for `NotificationPreference`, delivery status recorded on
-the row, and dead device tokens pruned on rejection.
+22 unit assertions on the policy rules, 35 integration assertions on a real
+broadcast with capturing providers. Five go red against the old behaviour.
 
-**Exit:** an integration test asserting a broadcast enqueues per recipient and
-records failures; a manual end-to-end to a real device.
+**Still open:** SMS and WhatsApp have no provider — a recipient who switches
+SMS on is told so on the delivery record rather than silently ignored. The
+delivery counts are on the API and nothing renders them yet: there is no admin
+broadcast composer in the UI at all, only the endpoint. A manual end-to-end to
+a real handset needs the mobile app, which does not exist (§2.4).
 
 ### 2.3 Photo and video storage — the feature parents pay for
 
@@ -356,7 +378,7 @@ paying an invoice.
 | ~~2~~ | ~~Security headers~~ | done | ✅ (CSP still report-only) |
 | ~~3~~ | ~~Audit trail scoping~~ | done | ✅ |
 | ~~4~~ | ~~Account recovery + email provider~~ | done | ✅ (needs Vercel env) |
-| 5 | Notification delivery | 4–5 d | Yes — emergency broadcasts |
+| ~~5~~ | ~~Notification delivery~~ | done | ✅ (no SMS provider) |
 | 6 | Backups, restore drill, retention | 3 d | Yes |
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
 | 8 | Error tracking + alerting | 1 d | Yes |
@@ -378,12 +400,14 @@ early because they run on someone else's calendar.
 
 ## 8. Things worth not forgetting
 
-- **Nothing applies migrations in production.** `vercel.json` builds with
-  `prisma generate && next build`; no step runs `prisma migrate deploy`. Every
-  migration since the last manual run is therefore pending against Neon, and
-  code that queries a new column 500s until someone remembers. Two are pending
-  now: `audit_entry_branch_scope` and `password_reset_tokens`. Either add a
-  deploy step or make it a written release step — but not neither.
+- **The deploy applies migrations now, and that has a sharp edge.** Nothing
+  used to: the build ran `prisma generate && next build` and never touched the
+  database, so a migration reached production only if somebody remembered to run
+  it, and code reading a new column 500s until they did. The Vercel build now
+  runs `prisma migrate deploy` first (`build:vercel`). The edge: preview deploys
+  build against the same `DATABASE_URL`, so a preview of a branch with a
+  migration in it migrates the production database. Give previews their own
+  branch database, or accept it knowingly — but know it.
 
 - **`@default(now())` is a trap in this schema.** Prisma maps `DateTime` to
   `timestamp without time zone`, so a database-side default records the

@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace=@climbkiddo/web",
+  "buildCommand": "npm run build:vercel --workspace=@climbkiddo/web",
   "outputDirectory": "apps/web/.next"
 }
