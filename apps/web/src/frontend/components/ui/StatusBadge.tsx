@@ -5,11 +5,11 @@ export type Tone = "success" | "warning" | "danger" | "info" | "neutral" | "bran
 
 const TONE_CLASS: Record<Tone, string> = {
   success: "bg-emerald-500/12 text-emerald-700 ring-emerald-600/20",
-  warning: "bg-amber-500/15 text-amber-700 ring-amber-600/20",
-  danger: "bg-ck-red/10 text-ck-red ring-ck-red/20",
+  warning: "bg-amber-500/15 text-amber-800 ring-amber-600/20",
+  danger: "bg-ck-red/10 text-ck-red-ink ring-ck-red/20",
   info: "bg-ck-blue/12 text-sky-700 ring-sky-600/20",
   neutral: "bg-muted text-muted-foreground ring-foreground/10",
-  brand: "bg-ck-magenta/10 text-ck-magenta ring-ck-magenta/20",
+  brand: "bg-ck-magenta/10 text-ck-magenta-ink ring-ck-magenta/20",
 };
 
 /** Status → tone map covering every enum in the SoW data model. */

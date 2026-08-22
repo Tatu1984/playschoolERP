@@ -131,9 +131,15 @@ export function Programs({ showHeading = true }: { showHeading?: boolean }) {
                 />
                 <CardContent className="relative grid gap-8 p-8 sm:p-12 lg:grid-cols-2">
                   <div>
+                    {/*
+                      Navy on a tint of the programme colour, not white on the
+                      colour itself: white on ck-orange measures 2.22:1 where AA
+                      wants 4.5:1. The colour still identifies the programme;
+                      the words are still readable.
+                    */}
                     <Badge
-                      className="rounded-full text-white font-bold"
-                      style={{ backgroundColor: p.color }}
+                      className="rounded-full text-ck-navy font-bold"
+                      style={{ backgroundColor: `${p.color}33` }}
                     >
                       {p.age}
                     </Badge>

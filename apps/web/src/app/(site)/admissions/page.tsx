@@ -96,7 +96,7 @@ export default async function AdmissionsPage() {
 
             <div className="mt-5 overflow-x-auto rounded-3xl border border-ck-cream">
               <table className="w-full text-sm">
-                <thead className="bg-ck-cream/40 text-left text-xs font-bold tracking-wide text-ck-navy/60 uppercase">
+                <thead className="bg-ck-cream/40 text-left text-xs font-bold tracking-wide text-ck-navy/75 uppercase">
                   <tr>
                     <th className="px-4 py-3">Program</th>
                     <th className="px-4 py-3">Ages</th>
@@ -129,7 +129,7 @@ export default async function AdmissionsPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-ck-navy/50">
+            <p className="mt-2 text-xs text-ck-navy/75">
               Three terms a year. Transport is optional and billed separately. Sibling discount of 10% on term fees.
             </p>
 
@@ -146,7 +146,7 @@ export default async function AdmissionsPage() {
                     <p className="mt-2 text-sm text-ck-navy/70">
                       Open {b.opensAt}–{b.closesAt} · {b.phone}
                     </p>
-                    <p className="mt-2 text-xs font-bold text-ck-navy/50">
+                    <p className="mt-2 text-xs font-bold text-ck-navy/75">
                       {enrolledIn(b.id)} children currently enrolled · capacity{" "}
                       {b.capacity}
                     </p>

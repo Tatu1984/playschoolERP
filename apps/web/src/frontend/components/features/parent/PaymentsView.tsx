@@ -175,7 +175,7 @@ export function PaymentsView() {
                       {formatMoney(inv.amount + inv.lateFee)}
                     </p>
                     {inv.paidAmount > 0 && inv.status !== "PAID" && (
-                      <p className="text-xs text-emerald-600">{formatMoney(inv.paidAmount)} paid</p>
+                      <p className="text-xs text-emerald-700">{formatMoney(inv.paidAmount)} paid</p>
                     )}
                   </div>
                   {inv.status !== "PAID" && inv.status !== "CANCELLED" && (
@@ -217,7 +217,7 @@ export function PaymentsView() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-heading text-base font-bold tabular-nums text-emerald-600">
+                  <span className="font-heading text-base font-bold tabular-nums text-emerald-700">
                     {formatMoney(p.amount)}
                   </span>
                   <Button size="sm" variant="outline" onClick={() => setReceipt(p)}>
@@ -319,7 +319,7 @@ export function PaymentsView() {
                   <td className="py-1.5">Total</td>
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(viewing.amount + viewing.lateFee)}</td>
                 </tr>
-                <tr className="text-emerald-600">
+                <tr className="text-emerald-700">
                   <td className="py-1.5">Paid</td>
                   <td className="py-1.5 text-right tabular-nums">− {formatMoney(viewing.paidAmount)}</td>
                 </tr>

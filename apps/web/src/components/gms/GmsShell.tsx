@@ -59,7 +59,7 @@ export function GmsShell({ children }: { children: React.ReactNode }) {
             <p className="font-[family-name:var(--font-fredoka)] text-lg font-bold text-ck-navy leading-none">
               Climb Kiddo
             </p>
-            <p className="text-[10px] font-semibold tracking-widest text-ck-navy/60 mt-1">
+            <p className="text-[10px] font-semibold tracking-widest text-ck-navy/75 mt-1">
               GMS · ADMIN
             </p>
           </div>

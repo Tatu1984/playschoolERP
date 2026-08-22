@@ -49,7 +49,7 @@ export function BlogIndexView({ initial }: { initial: BlogPost[] }) {
                 {featured.coverEmoji}
               </span>
               <div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ck-navy/60">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-ck-navy/75">
                   <Badge variant="outline" className="rounded-full">
                     {featured.category}
                   </Badge>
@@ -79,7 +79,7 @@ export function BlogIndexView({ initial }: { initial: BlogPost[] }) {
                 <span className="text-4xl" aria-hidden>
                   {post.coverEmoji}
                 </span>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold text-ck-navy/60">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold text-ck-navy/75">
                   <Badge variant="outline" className="rounded-full text-[10px]">
                     {post.category}
                   </Badge>
@@ -90,7 +90,7 @@ export function BlogIndexView({ initial }: { initial: BlogPost[] }) {
                   {post.title}
                 </h3>
                 <p className="mt-1.5 line-clamp-3 text-sm text-ck-navy/70">{post.excerpt}</p>
-                <p className="mt-3 text-xs text-ck-navy/50">
+                <p className="mt-3 text-xs text-ck-navy/75">
                   {post.author} · {formatDate(post.publishedAt ?? post.createdAt)}
                 </p>
               </CardContent>
@@ -136,7 +136,7 @@ export function BlogPostView({ slug, initial }: { slug: string; initial: BlogPos
         <span className="block text-5xl" aria-hidden>
           {post.coverEmoji}
         </span>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-ck-navy/60">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-ck-navy/75">
           <Badge variant="secondary" className="rounded-full">
             {post.category}
           </Badge>
@@ -149,7 +149,7 @@ export function BlogPostView({ slug, initial }: { slug: string; initial: BlogPos
           {post.title}
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-ck-navy/70">{post.excerpt}</p>
-        <p className="mt-3 text-sm font-bold text-ck-navy/60">By {post.author}</p>
+        <p className="mt-3 text-sm font-bold text-ck-navy/75">By {post.author}</p>
       </header>
 
       <div className="mt-8 space-y-4 text-base leading-relaxed text-ck-navy/85">
@@ -219,7 +219,7 @@ export function BlogPostView({ slug, initial }: { slug: string; initial: BlogPos
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold text-ck-navy">{r.title}</span>
-                  <span className="block text-xs text-ck-navy/60">{r.readMinutes} min read</span>
+                  <span className="block text-xs text-ck-navy/75">{r.readMinutes} min read</span>
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-ck-red" />
               </Link>

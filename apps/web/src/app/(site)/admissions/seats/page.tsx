@@ -43,7 +43,7 @@ export default async function SeatsPage() {
                   <h2 className="font-[family-name:var(--font-fredoka)] text-2xl font-bold text-ck-navy">
                     {branch.name.replace("Climb Kiddo — ", "")}
                   </h2>
-                  <p className="text-sm text-ck-navy/60">
+                  <p className="text-sm text-ck-navy/75">
                     {branch.address}, {branch.city} · {branch.phone}
                   </p>
                 </div>
@@ -67,7 +67,7 @@ export default async function SeatsPage() {
                             <p className="font-[family-name:var(--font-fredoka)] text-lg font-bold text-ck-navy">
                               {program?.emoji} {program?.name}
                             </p>
-                            <p className="text-xs text-ck-navy/60">
+                            <p className="text-xs text-ck-navy/75">
                               {room.name} · {program?.ageFrom}–{program?.ageTo} yrs
                             </p>
                           </div>
@@ -93,7 +93,7 @@ export default async function SeatsPage() {
                               style={{ width: `${Math.min(100, (taken / room.capacity) * 100)}%` }}
                             />
                           </div>
-                          <p className="mt-1.5 text-xs text-ck-navy/60">
+                          <p className="mt-1.5 text-xs text-ck-navy/75">
                             {taken} of {room.capacity} filled · {program?.durationLabel}
                           </p>
                         </div>

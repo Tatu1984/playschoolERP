@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             </ul>
           </div>
         ))}
-        <p className="border-t border-ck-cream pt-6 text-xs text-ck-navy/50">
+        <p className="border-t border-ck-cream pt-6 text-xs text-ck-navy/75">
           Last updated July 2026. Questions about this policy go to hello@climbkiddo.in.
         </p>
       </section>

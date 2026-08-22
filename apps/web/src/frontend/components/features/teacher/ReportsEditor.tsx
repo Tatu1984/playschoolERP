@@ -129,7 +129,7 @@ export function ReportsEditor() {
       cell: (r) => {
         const avg = Math.round(SKILLS.reduce((sum, k) => sum + r.scores[k], 0) / SKILLS.length);
         return (
-          <span className={avg >= 80 ? "font-semibold text-emerald-600" : avg >= 65 ? "font-semibold text-amber-600" : "font-semibold text-ck-red"}>
+          <span className={avg >= 80 ? "font-semibold text-emerald-700" : avg >= 65 ? "font-semibold text-amber-700" : "font-semibold text-ck-red"}>
             {avg}%
           </span>
         );

@@ -85,7 +85,7 @@ export function MusicStudio() {
     <div className="space-y-5">
       <div className="text-center">
         <h1 className="font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy">Music studio</h1>
-        <p className="text-sm font-semibold text-ck-navy/60">Tap the pads to make a tune</p>
+        <p className="text-sm font-semibold text-ck-navy/75">Tap the pads to make a tune</p>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
@@ -142,7 +142,7 @@ export function MusicStudio() {
 
       {tape.length > 0 && (
         <div className="rounded-2xl border bg-card p-3 text-center">
-          <p className="mb-1 font-[family-name:var(--font-baloo)] text-sm font-extrabold text-ck-navy/60">
+          <p className="mb-1 font-[family-name:var(--font-baloo)] text-sm font-extrabold text-ck-navy/75">
             Your tune ({tape.length} notes)
           </p>
           <p className="font-mono text-sm break-words">{tape.join(" · ")}</p>

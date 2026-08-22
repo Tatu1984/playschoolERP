@@ -17,6 +17,25 @@
   --color-ck-blue: #2BAEEC;
   --color-ck-magenta: #D4318F;
   --color-ck-green: #8BC53F;
+  /*
+   * "Ink" variants: the same brand hues, dark enough to be *text*.
+   *
+   * The brand colours are chosen for a nursery and they are lovely on a wall.
+   * On white at 14px, ck-green measures 2.06:1 and ck-blue 2.5:1 against a
+   * WCAG AA requirement of 4.5:1 — which is not a style opinion, it is a
+   * parent with ordinary middle-aged eyesight unable to read their child's
+   * attendance figure. The bright hues stay for fills, icons and charts, where
+   * contrast is judged differently; text uses these.
+   *
+   * Measured with axe against #ffffff and against the /10 tints these sit on:
+   * every one clears 4.5:1. tests/e2e/accessibility.spec.ts keeps them there.
+   */
+  --color-ck-red-ink: #B31B2C;
+  --color-ck-orange-ink: #8A5200;
+  --color-ck-blue-ink: #0B6C9C;
+  --color-ck-magenta-ink: #A81F6D;
+  --color-ck-green-ink: #4A7314;
+
   --color-ck-cream: #F0E5C8;
   --color-ck-navy: #1A1F4B;
   --color-ck-sky: #E8F6FE;

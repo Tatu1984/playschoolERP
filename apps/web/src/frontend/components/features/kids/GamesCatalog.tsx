@@ -31,7 +31,7 @@ export function GamesCatalog() {
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy">Games</h1>
-        <p className="text-sm font-semibold text-ck-navy/60">
+        <p className="text-sm font-semibold text-ck-navy/75">
           {journey.completedGames.length} of {CATALOGUE.games.length} played · {journey.stars} stars
         </p>
       </div>
@@ -70,7 +70,7 @@ export function GamesCatalog() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-[family-name:var(--font-baloo)] text-lg font-extrabold text-ck-navy">{g.title}</p>
-                <p className="truncate text-sm text-ck-navy/60">{g.tagline}</p>
+                <p className="truncate text-sm text-ck-navy/75">{g.tagline}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-ck-navy/70">
                     {g.ageTier} yrs

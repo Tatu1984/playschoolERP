@@ -71,7 +71,7 @@ export function AppSidebar({
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition",
                     active
-                      ? "bg-ck-red/10 text-ck-red"
+                      ? "bg-ck-red/10 text-ck-red-ink"
                       : "text-foreground/70 hover:bg-muted hover:text-foreground",
                   )}
                 >

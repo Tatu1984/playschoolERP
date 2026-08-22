@@ -76,7 +76,7 @@ export default function TermsPage() {
             </ul>
           </div>
         ))}
-        <p className="border-t border-ck-cream pt-6 text-xs text-ck-navy/50">
+        <p className="border-t border-ck-cream pt-6 text-xs text-ck-navy/75">
           Last updated July 2026. These terms sit alongside your signed enrolment form.
         </p>
       </section>

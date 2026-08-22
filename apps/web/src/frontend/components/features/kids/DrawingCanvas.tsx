@@ -104,7 +104,7 @@ export function DrawingCanvas() {
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy">Draw &amp; paint</h1>
-        <p className="text-sm font-semibold text-ck-navy/60">Pick a colour and use your finger</p>
+        <p className="text-sm font-semibold text-ck-navy/75">Pick a colour and use your finger</p>
       </div>
 
       {/* palette */}
@@ -144,7 +144,7 @@ export function DrawingCanvas() {
 
       {/* stamps */}
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <span className="font-[family-name:var(--font-baloo)] text-xs font-extrabold text-ck-navy/60">Stamps</span>
+        <span className="font-[family-name:var(--font-baloo)] text-xs font-extrabold text-ck-navy/75">Stamps</span>
         {STAMPS.map((s) => (
           <button
             key={s}

@@ -38,7 +38,7 @@ export function KidsHome() {
         <h1 className="mt-2 font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy sm:text-3xl">
           Hi {child?.firstName ?? "friend"}!
         </h1>
-        <p className="text-sm font-semibold text-ck-navy/60">
+        <p className="text-sm font-semibold text-ck-navy/75">
           {mascot.name} is ready to play. You have {journey.stars} stars.
         </p>
 
@@ -157,7 +157,7 @@ export function KidsHome() {
               </span>
               <span className="min-w-0">
                 <span className="block font-[family-name:var(--font-baloo)] font-extrabold text-ck-navy">{g.title}</span>
-                <span className="block truncate text-xs text-ck-navy/60">{g.tagline}</span>
+                <span className="block truncate text-xs text-ck-navy/75">{g.tagline}</span>
               </span>
               {journey.completedGames.includes(g.slug) && (
                 <span className="ml-auto shrink-0 text-lg" aria-label="Completed">

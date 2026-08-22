@@ -28,9 +28,23 @@ export function NotificationBell() {
 
   return (
     <DropdownMenu>
+      {/*
+        The label goes on the rendered Button, not on the Trigger. Base UI does
+        not forward it: put it on the Trigger and the DOM button ends up with no
+        accessible name at all, which axe reports as a critical violation and a
+        screen-reader user experiences as an unlabelled button in the header of
+        every page. It looked right in the source, which is the dangerous kind
+        of wrong.
+      */}
       <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon-sm" className="relative" />}
-        aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="relative"
+            aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
+          />
+        }
       >
         <Bell />
         {unread > 0 && (

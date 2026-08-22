@@ -233,7 +233,7 @@ export function CampusTour() {
               </span>
               <div className="min-w-0">
                 <h2 className="font-[family-name:var(--font-fredoka)] text-xl font-bold text-ck-navy">{active.name}</h2>
-                <p className="text-sm text-ck-navy/60">{active.blurb}</p>
+                <p className="text-sm text-ck-navy/75">{active.blurb}</p>
               </div>
             </div>
             {!guided && (

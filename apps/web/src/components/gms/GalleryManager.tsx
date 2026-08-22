@@ -246,7 +246,7 @@ export function GalleryManager({
                 ? `${queue.length} file${queue.length > 1 ? "s" : ""} ready`
                 : "Click to choose or drop files"}
             </p>
-            <p className="text-xs text-ck-navy/60">
+            <p className="text-xs text-ck-navy/75">
               Images & videos · up to 50MB each
             </p>
             <input
@@ -275,7 +275,7 @@ export function GalleryManager({
                   <span className="flex-1 truncate text-sm font-semibold text-ck-navy">
                     {f.name}
                   </span>
-                  <span className="text-xs text-ck-navy/60">
+                  <span className="text-xs text-ck-navy/75">
                     {(f.size / 1024 / 1024).toFixed(1)} MB
                   </span>
                   <button
@@ -305,7 +305,7 @@ export function GalleryManager({
 
       {/* Filter chips */}
       <div className="mt-10 flex items-center gap-2 flex-wrap">
-        <Filter className="h-4 w-4 text-ck-navy/60" />
+        <Filter className="h-4 w-4 text-ck-navy/75" />
         <button
           onClick={() => setFilter("all")}
           className={cn(
@@ -339,7 +339,7 @@ export function GalleryManager({
       {/* Grid */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visible.length === 0 ? (
-          <p className="col-span-full rounded-2xl bg-white p-10 text-center text-sm text-ck-navy/60 shadow-[0_4px_18px_rgba(26,31,75,0.05)]">
+          <p className="col-span-full rounded-2xl bg-white p-10 text-center text-sm text-ck-navy/75 shadow-[0_4px_18px_rgba(26,31,75,0.05)]">
             No items {filter === "all" ? "yet" : "in this category"}.
           </p>
         ) : (

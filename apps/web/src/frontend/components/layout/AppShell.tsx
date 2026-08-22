@@ -179,7 +179,7 @@ function MobileTabBar({ tabs, badges = {} }: { tabs: NavItem[]; badges?: BadgeCo
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition",
-                  active ? "text-ck-red" : "text-muted-foreground",
+                  active ? "text-ck-red-ink" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-5 w-5" />

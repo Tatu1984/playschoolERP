@@ -68,7 +68,7 @@ export default async function ProgramsPage() {
 
               <p className="line-clamp-2 text-sm text-ck-navy/70">{program.description}</p>
 
-              <div className="mt-auto flex flex-wrap items-center gap-3 text-xs font-bold text-ck-navy/60">
+              <div className="mt-auto flex flex-wrap items-center gap-3 text-xs font-bold text-ck-navy/75">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" /> {program.durationLabel}
                 </span>

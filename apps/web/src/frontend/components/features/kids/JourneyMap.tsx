@@ -27,7 +27,7 @@ export function JourneyMap() {
         <h1 className="font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy">
           {child?.firstName ?? "Your"} journey
         </h1>
-        <p className="text-sm font-semibold text-ck-navy/60">
+        <p className="text-sm font-semibold text-ck-navy/75">
           {journey.stars} stars collected · Level {journey.level}
         </p>
       </div>
@@ -70,7 +70,7 @@ export function JourneyMap() {
                       <p className="font-[family-name:var(--font-baloo)] text-lg font-extrabold text-ck-navy">
                         {world.name}
                       </p>
-                      <p className="text-xs font-semibold text-ck-navy/60">
+                      <p className="text-xs font-semibold text-ck-navy/75">
                         {unlocked
                           ? `${done}/${games.length} finished`
                           : `Needs ${world.needStars} stars — you have ${journey.stars}`}

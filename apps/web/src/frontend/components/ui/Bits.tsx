@@ -102,10 +102,10 @@ export function Tag({
 }) {
   const tones = {
     muted: "bg-muted text-muted-foreground",
-    brand: "bg-ck-red/10 text-ck-red",
+    brand: "bg-ck-red/10 text-ck-red-ink",
     blue: "bg-ck-blue/15 text-sky-700",
-    green: "bg-ck-green/15 text-lime-700",
-    orange: "bg-ck-orange/15 text-amber-700",
+    green: "bg-ck-green/15 text-ck-green-ink",
+    orange: "bg-ck-orange/15 text-ck-orange-ink",
   };
   return (
     <span className={cn("inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium", tones[tone], className)}>

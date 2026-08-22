@@ -78,7 +78,7 @@ export function InvoicesView() {
       cell: (i) => {
         const balance = Math.max(0, i.amount + i.lateFee - i.paidAmount);
         return (
-          <span className={balance > 0 ? "font-semibold tabular-nums text-ck-red" : "tabular-nums text-emerald-600"}>
+          <span className={balance > 0 ? "font-semibold tabular-nums text-ck-red" : "tabular-nums text-emerald-700"}>
             {balance > 0 ? formatMoney(balance) : "settled"}
           </span>
         );
@@ -209,7 +209,7 @@ export function InvoicesView() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-heading text-base font-bold tabular-nums text-emerald-600">
+                    <span className="font-heading text-base font-bold tabular-nums text-emerald-700">
                       {formatMoney(p.amount)}
                     </span>
                     <Button size="sm" variant="outline" onClick={() => toast.success(`${p.receiptNo}.pdf downloaded`)}>
@@ -269,7 +269,7 @@ export function InvoicesView() {
                   <td className="py-1.5">Total</td>
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(viewing.amount + viewing.lateFee)}</td>
                 </tr>
-                <tr className="text-emerald-600">
+                <tr className="text-emerald-700">
                   <td className="py-1.5">Paid</td>
                   <td className="py-1.5 text-right tabular-nums">− {formatMoney(viewing.paidAmount)}</td>
                 </tr>

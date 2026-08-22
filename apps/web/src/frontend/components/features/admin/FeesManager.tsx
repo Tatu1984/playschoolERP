@@ -405,7 +405,7 @@ export function FeesManager() {
                   <td className="py-1.5">Total</td>
                   <td className="py-1.5 text-right tabular-nums">{formatMoney(viewing.amount + viewing.lateFee)}</td>
                 </tr>
-                <tr className="text-emerald-600">
+                <tr className="text-emerald-700">
                   <td className="py-1.5">Paid</td>
                   <td className="py-1.5 text-right tabular-nums">− {formatMoney(viewing.paidAmount)}</td>
                 </tr>

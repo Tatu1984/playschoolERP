@@ -82,7 +82,7 @@ export function GameFrame({
           </span>
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-baloo)] text-xl font-extrabold text-ck-navy">{game.title}</h1>
-            <p className="truncate text-sm text-ck-navy/60">{game.tagline}</p>
+            <p className="truncate text-sm text-ck-navy/75">{game.tagline}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

@@ -268,7 +268,7 @@ export function ApplicationWizard() {
                 </p>
               </div>
             )}
-            <p className="text-xs text-ck-navy/60">
+            <p className="text-xs text-ck-navy/75">
               Submitting does not guarantee a seat. Seats are confirmed after a visit and the admission fee.
             </p>
           </div>

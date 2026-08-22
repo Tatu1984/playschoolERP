@@ -44,7 +44,7 @@ export function LoginForm({ next }: { next?: string }) {
             <p className="font-[family-name:var(--font-fredoka)] text-2xl font-bold text-ck-navy">
               Gallery Management
             </p>
-            <p className="text-sm text-ck-navy/60">Sign in to continue</p>
+            <p className="text-sm text-ck-navy/75">Sign in to continue</p>
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export function LoginForm({ next }: { next?: string }) {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-ck-navy/50">
+        <p className="mt-6 text-center text-xs text-ck-navy/75">
           Reach the admin to recover access.
         </p>
       </CardContent>

@@ -198,11 +198,11 @@ export function AdminOverview({ cctv }: { cctv: CctvSnapshot }) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Views today</p>
-                <p className="font-heading text-xl font-bold text-emerald-600">{cctv.viewsToday}</p>
+                <p className="font-heading text-xl font-bold text-emerald-700">{cctv.viewsToday}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Denied</p>
-                <p className={`font-heading text-xl font-bold ${cctv.deniedToday ? "text-amber-600" : ""}`}>
+                <p className={`font-heading text-xl font-bold ${cctv.deniedToday ? "text-amber-700" : ""}`}>
                   {cctv.deniedToday}
                 </p>
               </div>
@@ -295,9 +295,13 @@ export function AdminOverview({ cctv }: { cctv: CctvSnapshot }) {
           <SectionCard
             title="Recent admin activity"
             action={
+              // Icon-only, so it needs a name a screen reader can read out.
+              // Without one it is announced as "button", which on a dashboard
+              // full of cards tells the listener nothing at all.
               <Button
                 size="xs"
                 variant="ghost"
+                aria-label="Where to find the full audit trail"
                 onClick={() => toast.info("Full audit trail lives in Audit log")}
               >
                 <Plus />

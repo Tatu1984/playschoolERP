@@ -81,7 +81,7 @@ export function Hero() {
                 <Phone className="h-5 w-5" />
               </span>
               <span className="flex flex-col">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ck-navy/60">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ck-navy/75">
                   Talk to us
                 </span>
                 <span className="font-bold text-ck-navy">

@@ -185,7 +185,7 @@ export function AdmissionsPipeline() {
       cell: (a) => {
         const done = a.documents.filter((d) => d.uploaded).length;
         return (
-          <span className={done === a.documents.length ? "text-emerald-600" : "text-amber-600"}>
+          <span className={done === a.documents.length ? "text-emerald-700" : "text-amber-700"}>
             {done}/{a.documents.length}
           </span>
         );

@@ -125,7 +125,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
             <Card key={label} className="rounded-2xl border-ck-cream">
               <CardContent className="p-4 text-center">
                 <p className="font-[family-name:var(--font-fredoka)] text-2xl font-bold text-ck-navy">{value}</p>
-                <p className="mt-0.5 text-xs font-bold tracking-wide text-ck-navy/50 uppercase">{label}</p>
+                <p className="mt-0.5 text-xs font-bold tracking-wide text-ck-navy/75 uppercase">{label}</p>
               </CardContent>
             </Card>
           ))}
@@ -222,7 +222,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
             <Card className="rounded-3xl border-ck-cream">
               <CardContent className="p-6">
                 <h2 className="font-[family-name:var(--font-fredoka)] text-xl font-bold text-ck-navy">Fees</h2>
-                <p className="mt-1 text-sm text-ck-navy/60">Kathgola campus · {fees.termsPerYear} terms a year</p>
+                <p className="mt-1 text-sm text-ck-navy/75">Kathgola campus · {fees.termsPerYear} terms a year</p>
                 <ul className="mt-4 space-y-1.5 text-sm">
                   {[
                     ["Admission fee (one-time)", fees.admissionFee],
@@ -243,7 +243,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                     </span>
                   </li>
                 </ul>
-                <p className="mt-3 text-xs text-ck-navy/50">
+                <p className="mt-3 text-xs text-ck-navy/75">
                   Sibling discount 10% on term fees. Late fee {formatMoney(fees.lateFeePerDay)}/day after the due date.
                 </p>
                 <Button asChild className="mt-4 w-full rounded-xl font-bold">
@@ -264,7 +264,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                     {rooms.map((room) => (
                       <li key={room.id} className="rounded-xl bg-ck-cream/30 p-3">
                         <p className="font-bold text-ck-navy">{room.name}</p>
-                        <p className="text-xs text-ck-navy/60">
+                        <p className="text-xs text-ck-navy/75">
                           {room.room} · up to {room.capacity} children
                         </p>
                       </li>
@@ -288,7 +288,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate font-bold text-ck-navy">{t.name}</span>
-                          <span className="block truncate text-xs text-ck-navy/60">
+                          <span className="block truncate text-xs text-ck-navy/75">
                             {t.designation} · {t.qualification}
                           </span>
                         </span>
@@ -320,7 +320,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                   {p.emoji}
                 </span>
                 <span className="font-[family-name:var(--font-fredoka)] font-bold text-ck-navy">{p.name}</span>
-                <span className="text-xs text-ck-navy/60">
+                <span className="text-xs text-ck-navy/75">
                   {p.ageFrom}–{p.ageTo} yrs
                 </span>
               </Link>

@@ -5,22 +5,23 @@ import { cn } from "@/lib/utils";
 
 export type Accent = "brand" | "orange" | "blue" | "green" | "magenta" | "navy" | "muted";
 
+/** Ink variants: these are numbers people read. See accents.ts. */
 const ACCENT_TEXT: Record<Accent, string> = {
-  brand: "text-ck-red",
-  orange: "text-ck-orange",
-  blue: "text-ck-blue",
-  green: "text-ck-green",
-  magenta: "text-ck-magenta",
+  brand: "text-ck-red-ink",
+  orange: "text-ck-orange-ink",
+  blue: "text-ck-blue-ink",
+  green: "text-ck-green-ink",
+  magenta: "text-ck-magenta-ink",
   navy: "text-ck-navy",
   muted: "text-foreground",
 };
 
 const ACCENT_BG: Record<Accent, string> = {
-  brand: "bg-ck-red/10 text-ck-red",
-  orange: "bg-ck-orange/15 text-ck-orange",
-  blue: "bg-ck-blue/15 text-ck-blue",
-  green: "bg-ck-green/15 text-ck-green",
-  magenta: "bg-ck-magenta/10 text-ck-magenta",
+  brand: "bg-ck-red/10 text-ck-red-ink",
+  orange: "bg-ck-orange/15 text-ck-orange-ink",
+  blue: "bg-ck-blue/15 text-ck-blue-ink",
+  green: "bg-ck-green/15 text-ck-green-ink",
+  magenta: "bg-ck-magenta/10 text-ck-magenta-ink",
   navy: "bg-ck-navy/10 text-ck-navy",
   muted: "bg-muted text-muted-foreground",
 };
@@ -56,7 +57,7 @@ export function KpiCard({
               <span
                 className={cn(
                   "inline-flex items-center gap-0.5 text-xs font-semibold",
-                  delta >= 0 ? "text-emerald-600" : "text-ck-red",
+                  delta >= 0 ? "text-emerald-700" : "text-ck-red-ink",
                 )}
               >
                 {delta >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}

@@ -13,12 +13,18 @@ export const ACCENT_SOFT_BG: Record<AccentColor, string> = {
   navy: "bg-ck-navy/8",
 };
 
+/**
+ * Text uses the ink variants, not the bright hues. ck-green on white measures
+ * 2.06:1 and ck-blue 2.5:1 against WCAG AA's 4.5:1 — a figure a parent with
+ * ordinary eyesight cannot read. The bright colours stay for fills and icons,
+ * where the requirement is different and they pass.
+ */
 export const ACCENT_TEXT: Record<AccentColor, string> = {
-  red: "text-ck-red",
-  orange: "text-ck-orange",
-  blue: "text-ck-blue",
-  green: "text-ck-green",
-  magenta: "text-ck-magenta",
+  red: "text-ck-red-ink",
+  orange: "text-ck-orange-ink",
+  blue: "text-ck-blue-ink",
+  green: "text-ck-green-ink",
+  magenta: "text-ck-magenta-ink",
   navy: "text-ck-navy",
 };
 

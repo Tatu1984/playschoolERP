@@ -206,13 +206,13 @@ export function VisitBookingForm() {
                   date === key ? "border-ck-red bg-ck-red/5" : "border-border hover:bg-muted",
                 )}
               >
-                <span className="text-[10px] font-bold tracking-wide text-ck-navy/50 uppercase">
+                <span className="text-[10px] font-bold tracking-wide text-ck-navy/75 uppercase">
                   {d.toLocaleDateString("en-IN", { weekday: "short" })}
                 </span>
                 <span className="font-[family-name:var(--font-fredoka)] text-lg font-bold text-ck-navy">
                   {d.getDate()}
                 </span>
-                <span className="text-[10px] text-ck-navy/50">
+                <span className="text-[10px] text-ck-navy/75">
                   {d.toLocaleDateString("en-IN", { month: "short" })}
                 </span>
               </button>
@@ -264,7 +264,7 @@ export function VisitBookingForm() {
         />
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-ck-navy/60">
+          <div className="flex items-center gap-2 text-sm text-ck-navy/75">
             {form.mode === "VIDEO" ? <Video className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
             {slot ? (
               <span>

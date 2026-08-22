@@ -114,7 +114,7 @@ export function GalleryGrid({
   return (
     <>
       <div className="flex items-center gap-2 flex-wrap mb-8">
-        <Filter className="h-4 w-4 text-ck-navy/60" />
+        <Filter className="h-4 w-4 text-ck-navy/75" />
         <button
           onClick={() => setFilter("all")}
           className={cn(

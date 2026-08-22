@@ -93,9 +93,11 @@ export function Testimonials({ showHeading = true }: { showHeading?: boolean }) 
                     </p>
                     <div className="mt-6 flex items-center gap-3">
                       <Avatar className="h-11 w-11">
+                        {/* Same reason as the programme badges: initials in navy
+                            on a tint, rather than white on a bright hue. */}
                         <AvatarFallback
-                          className="text-white font-bold"
-                          style={{ backgroundColor: t.color }}
+                          className="text-ck-navy font-bold"
+                          style={{ backgroundColor: `${t.color}33` }}
                         >
                           {t.name
                             .split(" ")
@@ -106,7 +108,7 @@ export function Testimonials({ showHeading = true }: { showHeading?: boolean }) 
                       </Avatar>
                       <div>
                         <p className="font-bold text-ck-navy text-sm">{t.name}</p>
-                        <p className="text-xs text-ck-navy/60 font-semibold">
+                        <p className="text-xs text-ck-navy/75 font-semibold">
                           {t.relation}
                         </p>
                       </div>

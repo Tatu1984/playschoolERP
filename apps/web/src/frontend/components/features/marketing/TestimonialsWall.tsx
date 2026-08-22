@@ -30,15 +30,15 @@ export function TestimonialsWall({ initial }: { initial: Testimonial[] }) {
               <Star key={i} className="h-4 w-4 fill-ck-orange text-ck-orange" />
             ))}
           </div>
-          <p className="mt-1 text-xs font-bold text-ck-navy/60">average rating</p>
+          <p className="mt-1 text-xs font-bold text-ck-navy/75">average rating</p>
         </div>
         <div className="text-center">
           <p className="font-[family-name:var(--font-fredoka)] text-4xl font-bold text-ck-navy">{published.length}</p>
-          <p className="mt-1 text-xs font-bold text-ck-navy/60">families reviewed</p>
+          <p className="mt-1 text-xs font-bold text-ck-navy/75">families reviewed</p>
         </div>
         <div className="text-center">
           <p className="font-[family-name:var(--font-fredoka)] text-4xl font-bold text-ck-navy">96%</p>
-          <p className="mt-1 text-xs font-bold text-ck-navy/60">return next year</p>
+          <p className="mt-1 text-xs font-bold text-ck-navy/75">return next year</p>
         </div>
       </div>
 
@@ -57,7 +57,7 @@ export function TestimonialsWall({ initial }: { initial: Testimonial[] }) {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-bold text-ck-navy">{t.parentName}</p>
-                  <p className="truncate text-xs text-ck-navy/60">
+                  <p className="truncate text-xs text-ck-navy/75">
                     {t.relation} of {t.childName}
                   </p>
                 </div>

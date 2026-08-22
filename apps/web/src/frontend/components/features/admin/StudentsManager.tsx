@@ -281,7 +281,7 @@ export function StudentsManager() {
       cell: (s) => {
         const rate = attendanceRate(attendance, s.id);
         return (
-          <span className={rate >= 90 ? "text-emerald-600" : rate >= 75 ? "text-amber-600" : "text-ck-red"}>
+          <span className={rate >= 90 ? "text-emerald-700" : rate >= 75 ? "text-amber-700" : "text-ck-red"}>
             {rate}%
           </span>
         );

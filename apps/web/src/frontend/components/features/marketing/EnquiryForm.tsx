@@ -117,7 +117,7 @@ export function EnquiryForm({
   return (
     <form onSubmit={submit} className={cn("rounded-3xl bg-white p-6 text-ck-navy shadow-xl sm:p-8", className)}>
       <p className="font-[family-name:var(--font-fredoka)] text-2xl font-bold">{heading}</p>
-      <p className="mt-1 text-sm text-ck-navy/60">{blurb}</p>
+      <p className="mt-1 text-sm text-ck-navy/75">{blurb}</p>
 
       <div className="mt-5 space-y-3">
         <TextField label="Parent's name" required value={form.parentName} onChange={(v) => set("parentName", v)} placeholder="Riya Sharma" />
@@ -162,7 +162,7 @@ export function EnquiryForm({
         >
           <Send className="mr-2 h-4 w-4" /> {busy ? "Sending…" : "Send my enquiry"}
         </Button>
-        <p className="text-center text-[11px] text-ck-navy/50">
+        <p className="text-center text-[11px] text-ck-navy/75">
           We never share your details. You can ask us to delete them at any time.
         </p>
       </div>

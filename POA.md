@@ -64,7 +64,7 @@ Verified by tests that fail against the previous code, not by inspection:
 - Emergency broadcasts wrote a row and reached nobody.
 - There was no way to upload a photograph at all, and no consent to publish one.
 
-452 assertions plus 11 browser journeys: 213 unit, 239 integration, 11 e2e.
+452 assertions plus 22 browser checks: 213 unit, 239 integration, 11 journeys, 11 accessibility.
 
 ---
 
@@ -497,6 +497,14 @@ needs the media plane in the loop, which is a different kind of test.
   above is self-assessed; before live video of children, someone else should try
   to break it.
 - **Accessibility audit** — WCAG 2.2 AA. Parents include disabled parents.
+  *(2026-08-22: the automated third is done and in CI — 11 axe + keyboard checks
+  across the public site, both portals and the sign-in form, at WCAG 2.2 AA,
+  failing the build on anything serious or critical. It found and fixed real
+  ones: brand colours used as text at 2.06:1 where AA wants 4.5:1, an unlabelled
+  notification bell in every page header, an unlabelled button on the admin
+  dashboard. What it cannot judge — whether a label makes sense, whether the
+  focus order matches the reading order, whether an error message helps — still
+  needs a person.)*
 - **Staff and parent onboarding material**, and a support path for "I cannot get
   in", which is the first thing that will happen.
 - **A rehearsed rollback** for a bad deploy.
@@ -523,7 +531,7 @@ needs the media plane in the loop, which is a different kind of test.
 | ~~12~~ | ~~Playwright E2E~~ | done | ✅ |
 | 13 | Per-screen fetching | 5–10 d | No |
 | 14 | Penetration test | external | Yes, before CCTV goes live |
-| 15 | Accessibility audit | 3 d | No |
+| 15 | Accessibility audit — human half | 2 d | No (automated half ✅) |
 | 16 | Mobile app — build or delete references | — | No |
 
 Roughly **4–6 weeks of engineering** from the original starting point, of

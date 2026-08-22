@@ -71,7 +71,7 @@ export function KidsShell({ children }: { children: React.ReactNode }) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex min-h-[56px] flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-extrabold transition",
-                    active ? "text-ck-red" : "text-ck-navy/50 hover:text-ck-navy",
+                    active ? "text-ck-red" : "text-ck-navy/75 hover:text-ck-navy",
                   )}
                 >
                   <Icon className={cn("h-6 w-6", active && "scale-110")} />

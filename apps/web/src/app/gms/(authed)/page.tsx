@@ -88,7 +88,7 @@ export default async function GmsDashboard() {
               </Link>
             </div>
             {items.length === 0 ? (
-              <p className="mt-6 text-sm text-ck-navy/60">
+              <p className="mt-6 text-sm text-ck-navy/75">
                 No uploads yet. Head to Gallery to add your first.
               </p>
             ) : (

@@ -19,7 +19,7 @@ export function StoriesList() {
     <div className="space-y-4">
       <div className="text-center">
         <h1 className="font-[family-name:var(--font-baloo)] text-2xl font-extrabold text-ck-navy">Story time</h1>
-        <p className="text-sm font-semibold text-ck-navy/60">
+        <p className="text-sm font-semibold text-ck-navy/75">
           {journey.finishedStories.length} of {CATALOGUE.stories.length} finished
         </p>
       </div>
@@ -41,8 +41,8 @@ export function StoriesList() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-[family-name:var(--font-baloo)] text-lg font-extrabold text-ck-navy">{s.title}</p>
-                <p className="truncate text-sm text-ck-navy/60">{s.moral}</p>
-                <p className="mt-1 text-[10px] font-bold text-ck-navy/50">
+                <p className="truncate text-sm text-ck-navy/75">{s.moral}</p>
+                <p className="mt-1 text-[10px] font-bold text-ck-navy/75">
                   {s.minutes} min · {s.ageTier} yrs · {s.pages.length} pages
                 </p>
               </div>
@@ -157,7 +157,7 @@ export function StoryPlayer({ storyId }: { storyId: string }) {
             <ChevronLeft /> Stories
           </Link>
         </Button>
-        <p className="font-[family-name:var(--font-baloo)] text-sm font-extrabold text-ck-navy/60">
+        <p className="font-[family-name:var(--font-baloo)] text-sm font-extrabold text-ck-navy/75">
           Page {page + 1} of {story.pages.length}
         </p>
         <Button

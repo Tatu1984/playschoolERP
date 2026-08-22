@@ -52,7 +52,7 @@ export function PublicEventsView({ initial }: { initial: SchoolEvent[] }) {
               </div>
               <div className="space-y-3 p-5">
                 <p className="text-sm leading-relaxed text-ck-navy/70">{e.description}</p>
-                <div className="flex flex-wrap gap-3 text-xs font-medium text-ck-navy/60">
+                <div className="flex flex-wrap gap-3 text-xs font-medium text-ck-navy/75">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="h-3.5 w-3.5" /> {formatDateTime(e.startsAt)}
                   </span>
@@ -72,7 +72,7 @@ export function PublicEventsView({ initial }: { initial: SchoolEvent[] }) {
           </Card>
         ))}
         {upcoming.length === 0 && (
-          <p className="text-sm text-ck-navy/60">
+          <p className="text-sm text-ck-navy/75">
             {hydrated ? "Nothing on the calendar right now — check back soon." : "Loading the calendar…"}
           </p>
         )}
@@ -95,7 +95,7 @@ export function PublicEventsView({ initial }: { initial: SchoolEvent[] }) {
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate font-bold text-ck-navy">{e.title}</span>
-                  <span className="block text-xs text-ck-navy/60">{formatDateTime(e.startsAt)}</span>
+                  <span className="block text-xs text-ck-navy/75">{formatDateTime(e.startsAt)}</span>
                   {e.media.length > 0 && (
                     <span className="text-xs font-bold text-ck-red">{e.media.length} photos</span>
                   )}
@@ -177,7 +177,7 @@ export function PublicEventDetail({
       <div className="mt-6 space-y-4 text-base leading-relaxed text-ck-navy/80">
         <p>{event.description}</p>
         {branch && (
-          <p className="text-sm text-ck-navy/60">
+          <p className="text-sm text-ck-navy/75">
             Hosted by {branch.name} · {branch.address}, {branch.city} {branch.pincode}
           </p>
         )}
