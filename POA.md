@@ -29,7 +29,7 @@ broken at all**.
 |---|---|---|
 | Access control & scoping | 95% | Per-role, tested (32 assertions). Audit trail now scoped too. |
 | Payments | 90% | Mock unreachable in prod, webhooks verified, replays idempotent. |
-| Auth & sessions | 70% | Revocable, rate limited. **No account recovery at all.** |
+| Auth & sessions | 90% | Revocable, rate limited, recoverable. Reset needs Vercel env set. |
 | Data integrity & migrations | 95% | Migrations clean, drift-checked in CI. |
 | Dependencies | 95% | Zero high-severity in runtime deps; CI fails on a new one. |
 | Transport & headers | 75% | Enforced frame-ancestors/HSTS/nosniff. Full CSP still report-only. |
@@ -59,8 +59,10 @@ Verified by tests that fail against the previous code, not by inspection:
 - Thirteen high-severity advisories in production dependencies.
 - No security headers at all: any site could frame the live camera feed.
 - The audit trail answered every admin with every branch's entries.
+- There was no account recovery: `/forgot-password` awaited a `setTimeout` and
+  claimed a mail had been sent.
 
-240 assertions total: 129 unit, 111 integration.
+269 assertions total: 129 unit, 140 integration.
 
 ---
 
@@ -148,31 +150,37 @@ This was the last finding from the original audit still open.
 This is the bulk of the remaining distance, and none of it is hardening — it is
 product surface that looks finished and is not.
 
-### 2.1 Account recovery — **nothing works today**
+### 2.1 Account recovery ✅ **done, 2026-08-22**
 
-`ForgotPasswordForm.tsx` and `OtpForm.tsx` await a `setTimeout` and show a
-success toast. There is no `/api/auth/forgot-password`, no reset endpoint, and
-no OTP verification. `apps/web/src/app/api/auth/` contains only `login`,
-`logout`, `me`, `register`.
+Request → emailed link → new password → sign in, walked by 29 assertions
+against Postgres and by hand over HTTP.
 
-A parent who forgets their password has no way back into the account holding
-their child's records, and the UI tells them a reset email is on its way.
+- `backend/integrations/email.ts`: one interface, three drivers, chosen by
+  configuration the way the payment gateway is. Resend when `RESEND_API_KEY` is
+  set; a console driver outside production that writes the whole message, link
+  included; and **off** in production with nothing configured, refusing with
+  "please call the school office" rather than dropping a locked-out parent's
+  only way back into a log file.
+- `PasswordResetToken`: 32 random bytes, only the SHA-256 stored, single use,
+  30 minutes, and a new request spends the previous link.
+- `/api/auth/forgot-password` answers a stranger and a parent identically, so it
+  is not an oracle for who is enrolled here. Rate limited per address and per
+  email — the second is the mail-bomb, not the enumeration.
+- Completing a reset revokes every session, after the password write rather than
+  before, and issues no session of its own: whoever is holding the link may be
+  the reason for the reset.
+- A disabled account is not a way back in.
 
-Needs:
+`/verify-otp` and `OtpForm` are deleted. Both awaited a `setTimeout`, and a
+verification step that verifies nothing is worse than not having one. The SoW
+still lists `POST /api/auth/verify-otp` (§7.1); phone OTP can return when there
+is a real SMS provider and a DLT-registered template behind it. That is a
+decision, and this paragraph is where it is recorded.
 
-- An email provider (Resend or SES) behind an interface, the way
-  `backend/integrations/payments.ts` wraps the gateway — one file that decides,
-  never branched on elsewhere.
-- Single-use, expiring, hashed reset tokens in their own table. Rate limited via
-  the existing `enforceRateLimit` (a bucket already exists for this shape).
-- The reset must call `revokeSessions(userId)` — a password change that leaves
-  old sessions alive is not a password change.
-- SMS (Twilio or MSG91) if phone OTP is genuinely wanted; drop the OTP screen if
-  not. Shipping a verification step that verifies nothing is worse than not
-  having one.
-
-**Exit:** an integration test that walks request → token → reset → old sessions
-refused → new password works.
+**Needs setting in Vercel before this works in production:** `RESEND_API_KEY`,
+`EMAIL_FROM` on a verified domain, and `APP_URL` — a reset link built against
+the wrong origin is worse than no link at all. Without them the endpoint
+refuses honestly, so this is not a silent failure.
 
 ### 2.2 Notification delivery — records with no delivery
 
@@ -347,7 +355,7 @@ paying an invoice.
 | ~~1~~ | ~~Next upgrade + dependency advisories~~ | done | ✅ |
 | ~~2~~ | ~~Security headers~~ | done | ✅ (CSP still report-only) |
 | ~~3~~ | ~~Audit trail scoping~~ | done | ✅ |
-| 4 | Account recovery + email provider | 4–5 d | Yes |
+| ~~4~~ | ~~Account recovery + email provider~~ | done | ✅ (needs Vercel env) |
 | 5 | Notification delivery | 4–5 d | Yes — emergency broadcasts |
 | 6 | Backups, restore drill, retention | 3 d | Yes |
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
@@ -369,6 +377,13 @@ early because they run on someone else's calendar.
 ---
 
 ## 8. Things worth not forgetting
+
+- **Nothing applies migrations in production.** `vercel.json` builds with
+  `prisma generate && next build`; no step runs `prisma migrate deploy`. Every
+  migration since the last manual run is therefore pending against Neon, and
+  code that queries a new column 500s until someone remembers. Two are pending
+  now: `audit_entry_branch_scope` and `password_reset_tokens`. Either add a
+  deploy step or make it a written release step — but not neither.
 
 - **`@default(now())` is a trap in this schema.** Prisma maps `DateTime` to
   `timestamp without time zone`, so a database-side default records the
