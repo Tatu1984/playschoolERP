@@ -7,18 +7,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/** SoW §7.1 `POST /api/auth/forgot-password`. The endpoint lands in phase 2. */
+/**
+ * SoW §7.1 `POST /api/auth/forgot-password`.
+ *
+ * The success panel says "if an account exists" and means it: the endpoint
+ * answers a stranger and a parent identically, so this screen cannot be used to
+ * find out who is enrolled here. It used to say the same words after a 700ms
+ * `setTimeout`, with no endpoint behind it at all.
+ */
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setBusy(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setBusy(false);
-    setSent(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      // A refusal here is real — rate limited, or a deployment with no mail
+      // provider configured — and saying so is not a disclosure: it is the same
+      // answer for an address that has an account and one that does not.
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? "Could not send the reset link just now");
+      }
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the reset link just now");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (sent) {
@@ -63,6 +88,7 @@ export function ForgotPasswordForm() {
           Use the email the school has on file for you. We&apos;ll never say whether an account exists.
         </p>
       </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Sending…" : "Send reset link"}
       </Button>

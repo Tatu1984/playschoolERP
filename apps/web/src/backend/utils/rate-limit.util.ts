@@ -67,6 +67,42 @@ export const PUBLIC_FORM_LIMIT: RateLimit = { bucket: "public-form", max: 20, wi
 export const REGISTER_LIMIT: RateLimit = { bucket: "register", max: 5, windowSeconds: 3600 };
 
 /**
+ * Asking for a password reset, counted per address. Stops one machine from
+ * working through a list of parents to find out which are enrolled — the
+ * endpoint answers identically either way, and this stops the volume that would
+ * otherwise make the timing worth measuring.
+ */
+export const RESET_REQUEST_IP_LIMIT: RateLimit = {
+  bucket: "reset-request-ip",
+  max: 10,
+  windowSeconds: 3600,
+};
+
+/**
+ * The same, counted per email address, which is the mail-bomb: a stranger who
+ * knows a parent's address should not be able to put fifty reset mails in their
+ * inbox. Five an hour is far more than a person who has genuinely forgotten
+ * their password ever needs, and the cost of hitting it is a wait rather than a
+ * lockout — the account itself is untouched.
+ */
+export const RESET_REQUEST_EMAIL_LIMIT: RateLimit = {
+  bucket: "reset-request-email",
+  max: 5,
+  windowSeconds: 3600,
+};
+
+/**
+ * Presenting a reset token. Guessing one is not the threat — it is 32 random
+ * bytes — but an endpoint that will hash and look up anything you send it as
+ * fast as you can send it is worth a ceiling regardless.
+ */
+export const RESET_SUBMIT_LIMIT: RateLimit = {
+  bucket: "reset-submit",
+  max: 20,
+  windowSeconds: 900,
+};
+
+/**
  * The caller's address, as far as it can be known.
  *
  * Behind Vercel the client address is the first entry of `x-forwarded-for`; the

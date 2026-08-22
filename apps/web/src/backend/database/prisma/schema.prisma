@@ -423,6 +423,7 @@ model User {
   eventRsvps        EventRsvp[]
   broadcastAcks     BroadcastAck[]
   pickupAuths       PickupAuthorization[]
+  passwordResets    PasswordResetToken[]
 
   @@index([role])
   @@index([branchId])
@@ -462,6 +463,33 @@ model RefreshToken {
   expiresAt  DateTime
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// A password reset in flight (/forgot-password -> /reset-password).
+//
+// The token itself is never stored: only its SHA-256. A reset table read out of
+// a backup or a log would otherwise be a list of live keys to every account
+// that had recently forgotten a password, which is the one moment an account is
+// least protected.
+//
+// Deliberately no `@default(now())` on either timestamp — see the note on
+// User.sessionsValidFrom. These are compared against the clock, so they are
+// written from the application where a Date is an unambiguous instant.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  // Set the moment the token is spent. Single use: a reset link sitting in a
+  // mailbox, or in a forwarded email, must not open the account twice.
+  usedAt    DateTime?
+  // Kept for the audit trail of an account takeover attempt, not for gating.
+  requestIp String    @default("")
+  createdAt DateTime
 
   @@index([userId])
   @@index([expiresAt])

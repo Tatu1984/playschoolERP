@@ -46,6 +46,19 @@ const schema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
+  // Transactional email (Resend). Absent outside production logs the message
+  // to the server console instead, link included, so the reset flow is
+  // walkable locally; absent *in* production switches password reset off
+  // rather than pretending to send — see backend/integrations/email.ts.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("Climb Kiddo <no-reply@climbkiddo.in>"),
+
+  // Absolute origin this deployment answers on, used to build the links that
+  // go into email. A reset link is useless if it points at localhost, and
+  // worse than useless if it points at somebody else's host — so this is
+  // configuration, never a value read from a request header.
+  APP_URL: z.string().default("http://localhost:3000"),
+
   // Legacy (marketing GMS) — kept working, unrelated to ERP
   ADMIN_PASSWORD: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
