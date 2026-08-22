@@ -600,15 +600,19 @@ needs the media plane in the loop, which is a different kind of test.
 | 15 | Accessibility audit — human half | 2 d | No (automated half ✅) |
 | ~~16~~ | ~~Mobile app — decide~~ | done | ✅ (references deleted; not built) |
 
-Twelve of the sixteen are done. **What is left before a real school's records
-go in is not engineering:**
+Twelve of the sixteen are done, and **`docs/ops/launch-runbook.md` is the step
+by step for the rest** — every variable to set, every account to open, how to
+know each worked, and what breaks if it is skipped.
+
+**What is left before a real school's records go in is not engineering:**
 
 | Blocking | Who it needs |
 |---|---|
 | Restore drill (§3.1) | Someone with the Neon console. An afternoon. |
 | DPIA, retention policy, controller, breach procedure (§3.3) | A lawyer. `docs/ops/data-inventory.md` is the brief. |
 | Penetration test, CCTV plane included (§5) | An external tester. Runs on their calendar — book it now. |
-| Four environment variables in Vercel | `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`, `CRON_SECRET`. Without them, reset and the nightly prune refuse — honestly, but they refuse. |
+| Environment variables in Vercel | The full table is §1.1 of the runbook. Without them the integrations refuse — honestly, but they refuse. |
+| Creating the first administrator | `npm run admin:create` — there is no staff sign-up, and `db:seed` inserts a fictional school. |
 
 Non-blocking engineering that remains: the rest of per-screen fetching (§4.2),
 video upload and an upload UI (§2.3), an SMS provider (§2.2), the human half of
