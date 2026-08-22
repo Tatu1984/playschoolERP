@@ -56,7 +56,8 @@ That store is the single seam the backend phase replaces; see *Backend phase —
 - ✅ Homebrew **Postgres 14** running; `playschool` DB with schema + seed data.
 - ✅ **Colima** Docker runtime installed & running; **MediaMTX** + **ffmpeg test stream** containers up (`ck_mediamtx`, `ck_teststream`), `restart: unless-stopped` so they revive once Colima is up.
 - ✅ **CCTV pipeline verified server-side end-to-end:** test stream publishes (H.264 720p+AAC), our `/api/cctv/authorize` hook authorizes **publish** (200) and correctly **denies reads without a token (401) / allows reads with a valid 60s token (200)** — confirmed in the dev log.
-- ⚠️ **Not yet eyeballed in a browser:** the final WHEP video frame at `/parent/cctv`. Auth + publish + read-authorization all proven; the last mile is opening the page in a browser. If WebRTC/ICE misbehaves through the Colima VM, the ICE-TCP candidate (already configured) or an HLS fallback in the player is the fix.
+- ✅ **Eyeballed in a browser (2026-08-22):** `/parent/cctv` negotiates WHEP and plays a **1280×720** frame — `videoWidth 1280`, `readyState 4`, not paused — and the watch is recorded in `CctvViewLog` as AUTHORIZE_GRANTED → TOKEN_ISSUED → VIEW_START. Asserted by `apps/web/tests/e2e/cctv-check.spec.ts`.
+  **One gotcha worth knowing:** MediaMTX authorises every read by calling the hook at the address in `infra/mediamtx.yml` — `host.docker.internal:3000`. Run the app on any other port and the media server gets connection-refused and answers the browser 401, which looks exactly like a broken camera and is not one. The test skips itself rather than lie about it.
 
 ---
 

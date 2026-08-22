@@ -216,7 +216,13 @@ export interface ErpActions {
   startConversation(conv: Omit<Conversation, "id" | "createdAt">, firstMessage: string, sender: Pick<Message, "senderId" | "senderName" | "senderRole">): ID;
   markConversationRead(conversationId: ID, side: "parent" | "teacher"): void;
 
-  payInvoice(invoiceId: ID, amount: number, method: Payment["method"]): void;
+  /**
+   * Resolves true only when the money actually moved. Every other write in
+   * this store is optimistic; this one is not, because "we showed a receipt
+   * and the payment never happened" is the one failure a school cannot
+   * apologise its way out of.
+   */
+  payInvoice(invoiceId: ID, amount: number, method: Payment["method"]): Promise<boolean>;
   issueInvoice(invoice: Invoice): void;
 
   rsvpEvent(eventId: ID, userId: ID, name: string, guests: number): void;
@@ -606,8 +612,36 @@ export const useErpStore = create<ErpStore>()(
       },
 
       // ---- fees --------------------------------------------------------
-      payInvoice: (invoiceId, amount, method) => {
-        if (amount > 0) push(() => remote.payInvoice(invoiceId, amount, method));
+      /**
+       * The one write that waits for the server.
+       *
+       * It used to fire the request and update the screen immediately, like
+       * every other action here. That is right for a notice and wrong for
+       * money: with no gateway configured the API answers 503 "online payment
+       * is not set up — please pay at the school office", and the parent was
+       * shown a receipt anyway. The store then quietly corrected itself on the
+       * next refresh, so the invoice was still outstanding and the parent had
+       * been told it was settled.
+       *
+       * So: await the server, and only then write anything down. The button
+       * already has a spinner; waiting is what it was for.
+       */
+      payInvoice: async (invoiceId, amount, method) => {
+        if (amount <= 0) return false;
+
+        if (apiEnabled()) {
+          try {
+            await remote.payInvoice(invoiceId, amount, method);
+          } catch (e) {
+            const message = e instanceof Error ? e.message : "That payment did not go through";
+            console.error("[erp] payment failed:", e);
+            toast.error(message);
+            useErpStore.setState({ lastError: message });
+            void get().refresh();
+            return false;
+          }
+        }
+
         set((state) => {
           const inv = state.invoices.find((i) => i.id === invoiceId);
           // Ignore no-op collections so a ₹0 submit can never flip an unpaid
@@ -635,6 +669,7 @@ export const useErpStore = create<ErpStore>()(
             }),
           };
         });
+        return true;
       },
 
       issueInvoice: (invoice) => {

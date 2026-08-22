@@ -112,14 +112,18 @@ export function FeesManager() {
     { key: "status", header: "Status", sortValue: (i) => i.status, cell: (i) => <StatusBadge status={i.status} /> },
   ];
 
-  function collect(): boolean {
+  async function collect(): Promise<boolean> {
     if (!collecting) return false;
     const amount = Number(collectAmount);
     if (!amount || amount <= 0) {
       toast.error("Enter an amount");
       return false;
     }
-    payInvoice(collecting.id, amount, collectMethod);
+    // The office is recording cash it is holding, so the confirmation has to
+    // mean the database agrees. Saying "recorded" and having recorded nothing
+    // is how a family gets chased for fees they already paid at the desk.
+    const recorded = await payInvoice(collecting.id, amount, collectMethod);
+    if (!recorded) return false;
     toast.success(`${formatMoney(amount)} recorded against ${collecting.number}`);
     setCollecting(null);
     return true;
@@ -248,12 +252,21 @@ export function FeesManager() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    ids.forEach((id) => {
-                      const inv = invoices.find((x) => x.id === id);
-                      if (inv && inv.status !== "PAID") payInvoice(id, inv.amount + inv.lateFee - inv.paidAmount, "CASH");
-                    });
-                    toast.success(`${ids.length} invoices marked paid`);
+                  onClick={async () => {
+                    const results = await Promise.all(
+                      ids.map((id) => {
+                        const inv = invoices.find((x) => x.id === id);
+                        if (!inv || inv.status === "PAID") return Promise.resolve(false);
+                        return payInvoice(id, inv.amount + inv.lateFee - inv.paidAmount, "CASH");
+                      }),
+                    );
+                    // Count what actually settled. "12 invoices marked paid"
+                    // when three were refused is worse than no message at all.
+                    const settled = results.filter(Boolean).length;
+                    if (settled) toast.success(`${settled} invoice${settled === 1 ? "" : "s"} marked paid`);
+                    if (settled < ids.length) {
+                      toast.error(`${ids.length - settled} could not be settled — they are unchanged`);
+                    }
                     clear();
                   }}
                 >

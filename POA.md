@@ -577,6 +577,20 @@ the accessibility audit (§5), and a mobile app if one is wanted.
 
 ## 8. Things worth not forgetting
 
+- **A screen that updates is not a database that changed.** The store writes
+  optimistically and pushes to the API afterwards, which is right for a notice
+  and was wrong for money: with payments switched off the API answered 503 and
+  the parent was shown a receipt anyway. Paying now waits for the server and
+  produces no receipt without one. `tests/e2e/writes-reach-the-database.spec.ts`
+  is the guard — it does what a person does and then asks Postgres whether it
+  happened, which is the only test in the repository that can catch this shape
+  of bug.
+
+- **MediaMTX authorises against port 3000.** `infra/mediamtx.yml` points the
+  authorize hook at `host.docker.internal:3000`. Run the app anywhere else and
+  the media server gets connection-refused and answers the browser 401 — which
+  looks exactly like a broken camera and is not one.
+
 - **The deploy applies migrations now, and that has a sharp edge.** Nothing
   used to: the build ran `prisma generate && next build` and never touched the
   database, so a migration reached production only if somebody remembered to run

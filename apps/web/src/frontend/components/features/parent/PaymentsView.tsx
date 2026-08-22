@@ -77,9 +77,16 @@ export function PaymentsView() {
       return false;
     }
     setProcessing(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    payInvoice(paying.id, value, method);
+    // Waits for the gateway. The artificial 1.2s pause that used to stand in
+    // for this is gone: it made the screen *look* like it was doing the thing
+    // it was not doing. If the payment is refused — no gateway configured, an
+    // invoice already settled — `payInvoice` says so and there is no receipt,
+    // because a receipt for a payment that did not happen is the single worst
+    // thing this screen could produce.
+    const paid = await payInvoice(paying.id, value, method);
     setProcessing(false);
+    if (!paid) return false;
+
     const latest = useErpStore.getState().payments[0];
     setPaying(null);
     setReceipt(latest ?? null);
