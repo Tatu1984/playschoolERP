@@ -53,6 +53,35 @@ first, so pending migrations apply themselves.
 a preview of a branch containing a migration migrates production. Either give
 previews their own Neon branch database or know that this is true.
 
+**If the build fails with `P3005 — The database schema is not empty`,** the
+database was created with `prisma db push` and so has tables but no migration
+history. Prisma refuses to run migrations against a database whose history it
+cannot see, which is the right instinct. Teach it the history once, from a
+machine holding the production `DATABASE_URL`:
+
+```bash
+cd apps/web
+export DATABASE_URL="postgresql://…neon…"
+
+# 1. Look first. Reads every migration, works out which tables, columns and
+#    enum types it creates, and asks the database whether they are there.
+npm run db:baseline
+
+# 2. If nothing came back "partial", mark what is already there as applied.
+npm run db:baseline -- --apply
+
+# 3. Redeploy. `migrate deploy` now runs only what is genuinely missing.
+```
+
+The report is the point. `present` means safe to mark as applied; `missing`
+means `migrate deploy` should run it; **`partial` means stop** — a half-applied
+migration is a state no migration describes, and marking it applied would hide
+the missing half for ever.
+
+Never baseline by marking everything applied without looking. If the database is
+behind, those migrations are lost, and the first request touching a missing
+column is a 500 nobody can explain.
+
 ### 1.3 Check it worked
 
 ```bash
