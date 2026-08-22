@@ -225,6 +225,16 @@ had gone out. Now:
 22 unit assertions on the policy rules, 35 integration assertions on a real
 broadcast with capturing providers. Five go red against the old behaviour.
 
+**Consent is now a screen, not just a rule (2026-08-22).** The parent's privacy
+tab had four switches that called `toast.success("Consent preference recorded")`
+and recorded nothing — on the one screen where a family believes they have
+refused. It now carries one switch per child, wired to the real
+`PhotoConsent` record, and says plainly that refusing stops new posts rather
+than unpublishing old ones. The office has the same control on a child's record,
+because most consents arrive at the gate. The three switches that had nothing
+behind them are gone, and the "request a data export" button that promised an
+email in 48 hours now says the truth: ask the office.
+
 **Still open:** SMS and WhatsApp have no provider — a recipient who switches
 SMS on is told so on the delivery record rather than silently ignored. The
 delivery counts are on the API and nothing renders them yet: there is no admin
@@ -281,9 +291,13 @@ carrying GPS coordinates and checks the stored object is smaller and scrubbed.
   they are still URL metadata. It no longer claims to upload: it says it makes
   the entry and the URL is pasted in. Joining it to the GMS gallery's public
   blob path is the real fix.
-- **No admin composer for safety broadcasts.** `/api/emergency/broadcasts`
-  exists, is tested, and delivers; there is no screen for a head teacher to send
-  one from. Today it takes an API call.
+- ~~No admin composer for safety broadcasts.~~ **Built 2026-08-22:**
+  `/admin/emergency`, in its own sidebar entry rather than under Notices — a
+  notice is news, a broadcast wakes phones, and nobody should have to guess
+  which tab the emergency control is on at speed. CRITICAL asks a second time
+  before sending, because it overrides quiet hours and muted topics by design.
+  Every broadcast shows how many people it reached and how many have it in the
+  portal only — that last number is the list the office telephones.
 
 ### 2.4 Decide the mobile app
 
@@ -470,10 +484,22 @@ records it summarises is the worst kind of wrong: every screen looks fine and
 every number is off. The scoping is asserted too — one branch's summary counts
 different children from the other's.
 
-**Still open, and this is the rest of §4.2:** invoices are now the largest
-collection in an admin's payload (578KB, and it also only ever gets summed);
-messages and the feed are still fetched whole. The pattern is established and
-measured — `npm run load:measure` is how the next slice should be judged.
+**Invoices followed (same day).** They were the largest collection left in an
+admin's payload at 578KB, mostly invoices settled years ago. An admin now gets
+the same window as everything else **plus every unpaid invoice, whatever its
+age** — a window alone would hide the two-year-old invoice nobody has paid,
+which is precisely the one an office needs on screen. Parents still get their
+whole history; they have few enough that it is cheap, and "where is my receipt
+from last year" is a question they ask.
+
+**Admin snapshot: 7.95MB → 2.39MB → 0.96MB → 0.46MB.** Seventeen times smaller
+than where it started, and nothing truncated.
+
+**Still open, and this is the rest of §4.2:** messages and the feed are still
+fetched whole, and the admin fees table genuinely lists invoices rather than
+summing them — so the fix there is pagination, not an aggregate. The pattern is
+established and measured; `npm run load:measure` is how the next slice should be
+judged.
 
 ### 4.3 Load testing ✅ **done, 2026-08-22**
 

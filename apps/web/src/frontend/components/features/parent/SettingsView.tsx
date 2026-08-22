@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Bell, Globe, Lock, Moon, RotateCcw } from "lucide-react";
+import { Bell, Globe, Moon, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,7 @@ import { SelectField, SwitchField, TextField } from "@/frontend/components/ui/Fi
 import { ConfirmDialog } from "@/frontend/components/ui/FormDialog";
 import type { NotificationChannel, NotificationKind } from "@/shared/types/ops.types";
 import { titleCase, toggle } from "@/shared/utils/common.util";
+import { PhotoConsentCard } from "@/frontend/components/features/parent/PhotoConsentCard";
 
 const CHANNELS: { key: NotificationChannel; label: string; description: string }[] = [
   { key: "PUSH", label: "Push notifications", description: "Instant alerts on your phone" },
@@ -182,47 +183,35 @@ export function SettingsView() {
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-4 pt-4">
-          <SectionCard title="Media consent" icon={<Lock className="h-4 w-4" />} description="Controls how your child appears in school communications.">
-            <div className="grid gap-2 md:grid-cols-2">
-              <SwitchField
-                label="Photos in the class feed"
-                description="Visible only to parents of the same class"
-                checked
-                onChange={() => toast.success("Consent preference recorded")}
-              />
-              <SwitchField
-                label="Photos on the public website"
-                description="Gallery, social media and brochures"
-                checked={false}
-                onChange={() => toast.success("Consent preference recorded")}
-              />
-              <SwitchField
-                label="Video recordings"
-                description="Annual day and performance videos"
-                checked
-                onChange={() => toast.success("Consent preference recorded")}
-              />
-              <SwitchField
-                label="Live camera access"
-                description="Your own access to your child's classroom"
-                checked
-                onChange={() => toast.info("Camera access is managed by the school office")}
-              />
-            </div>
-          </SectionCard>
+          {/*
+            One switch, and it is real.
+            
+            There used to be four here — class feed, public website, video
+            recordings, live camera — and every one of them called
+            toast.success("Consent preference recorded") and recorded nothing.
+            A consent screen that does not record consent is worse than no
+            screen: it produces a family who believe they have refused.
+            
+            The one the product can actually honour is photographs in the class
+            feed, because that is the one the server enforces: a post carrying
+            photographs cannot name a child without consent on file. The rest
+            are things the office does, so the screen says so instead of
+            pretending to be the control.
+          */}
+          <PhotoConsentCard />
 
-          <SectionCard title="Your data" description="Under GDPR/DPDP you can request a copy or deletion of your family's data.">
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => toast.success("Export requested — we'll email a link within 48 hours")}>
-                Request data export
-              </Button>
-              <Button variant="outline" onClick={() => toast.info("Deletion requests are handled by the school office")}>
-                Request deletion
-              </Button>
-            </div>
+          <SectionCard
+            title="Your data"
+            description="Under the DPDP Act you can ask what we hold about your family, and ask us to delete it."
+          >
+            <p className="text-sm text-muted-foreground">
+              Both requests go to the school office, who will answer in writing. There is no
+              self-service button here yet — and a button that filed nothing would be worse than
+              this sentence.
+            </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="outline">No third-party trackers in the Kids Zone</Badge>
-              <Badge variant="outline">No recordings kept from live cameras</Badge>
+              <Badge variant="outline">Live camera is viewed, never recorded by this app</Badge>
             </div>
           </SectionCard>
 

@@ -107,9 +107,12 @@ async function main() {
       snap.coverage!.windowed.includes("attendance"),
     );
     check("so are messages", snap.coverage!.windowed.includes("messages"));
+    // Invoices are windowed for an admin (recent history plus everything still
+    // owed) and not for a parent, who has few enough to send the lot. The
+    // server says which, per role, so no screen has to guess.
     check(
-      "invoices are not — they are capped, not windowed",
-      !snap.coverage!.windowed.includes("invoices"),
+      "an admin is told their invoices are windowed",
+      snap.coverage!.windowed.includes("invoices"),
     );
     const since = new Date(snap.coverage!.since);
     check("the window is in the past", since.getTime() < Date.now());
@@ -131,6 +134,52 @@ async function main() {
       (snap.attendanceSummary?.since ?? "") >= snap.coverage!.since.slice(0, 10),
       `— summary from ${snap.attendanceSummary?.since}, window from ${snap.coverage!.since.slice(0, 10)}`,
     );
+
+    console.log("\nAn admin's invoices: recent history, plus everything still owed");
+    // The dangerous half of a window on invoices is the one it hides: an
+    // invoice from two years ago that has never been paid is precisely the one
+    // an office needs on screen.
+    const oldStudent = student.id;
+    const oldPaid = await prisma.invoice.create({
+      data: {
+        number: `TEST-PAID-${Date.now()}`,
+        studentId: oldStudent,
+        studentName: "Test Child",
+        branchId: student.branchId,
+        term: "Ancient term",
+        amount: 1000,
+        paidAmount: 1000,
+        dueOn: daysAgoDate(400),
+        issuedOn: daysAgoDate(400),
+        status: "PAID",
+      },
+    });
+    const oldUnpaid = await prisma.invoice.create({
+      data: {
+        number: `TEST-OWED-${Date.now()}`,
+        studentId: oldStudent,
+        studentName: "Test Child",
+        branchId: student.branchId,
+        term: "Ancient term",
+        amount: 1000,
+        dueOn: daysAgoDate(400),
+        issuedOn: daysAgoDate(400),
+        status: "OVERDUE",
+      },
+    });
+
+    try {
+      const withInvoices = await bootstrapService.snapshot(scope);
+      const ids = new Set(withInvoices.invoices.map((i) => i.id));
+      check("a settled invoice from 400 days ago is not carried", !ids.has(oldPaid.id));
+      check("but one still owed from 400 days ago is", ids.has(oldUnpaid.id));
+      check(
+        "and the admin is told invoices are windowed, so the screen can say so",
+        withInvoices.coverage!.windowed.includes("invoices"),
+      );
+    } finally {
+      await prisma.invoice.deleteMany({ where: { id: { in: [oldPaid.id, oldUnpaid.id] } } });
+    }
 
     console.log("\nThe window is actually applied — for the roles that get rows");
     // A teacher still receives registers: marking one needs each child's mood,
@@ -209,3 +258,8 @@ main().catch(async (e) => {
   await prisma.$disconnect();
   process.exit(1);
 });
+
+/** A Date n days back, for planting rows either side of a window. */
+function daysAgoDate(n: number): Date {
+  return new Date(Date.now() - n * 86_400_000);
+}

@@ -38,6 +38,10 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: "Fees", href: "/admin/fees", icon: "Wallet", badge: "fees" },
       { label: "Notices", href: "/admin/notices", icon: "Megaphone" },
+      // Not filed under Notices on purpose: a notice is news, a broadcast wakes
+      // phones. Somebody looking for the emergency control at speed should not
+      // have to guess which tab it is on.
+      { label: "Safety broadcasts", href: "/admin/emergency", icon: "Siren" },
       { label: "Events", href: "/admin/events", icon: "CalendarDays" },
       { label: "Cameras", href: "/admin/cameras", icon: "Video" },
     ],

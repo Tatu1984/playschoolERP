@@ -106,6 +106,13 @@ export interface SnapshotCoverage {
 /** The collections the `since` filter above is applied to. */
 const WINDOWED = ["attendance", "messages"];
 
+/**
+ * Collections an admin sees a window of, on top of the shared list. Invoices
+ * are not windowed for a parent — they have few enough that the whole history
+ * is cheap, and "where is my receipt from last year" is a question they ask.
+ */
+const ADMIN_WINDOWED = [...WINDOWED, "invoices"];
+
 const EMPTY_ANALYTICS = {
   attendanceTrend: [],
   feeCollection: [],
@@ -176,7 +183,17 @@ export const bootstrapService = {
       messagingService.listConversations(scope),
       messagingService.listMeetings(scope),
       isParent || isAdmin ? feeService.listStructures(scope) : [],
-      isParent || isAdmin ? feeService.listInvoices(scope, {}, CAP.invoices) : [],
+      // A parent has a handful of invoices and gets all of them. An admin at a
+      // four-hundred-child school has thousands, mostly settled years ago, and
+      // they were 578KB of a 0.96MB snapshot — so an admin gets the same
+      // window as everything else *plus* every unpaid invoice, whatever its
+      // age. Hiding an outstanding invoice to save bytes would be the wrong
+      // trade in a way a family finds out about.
+      isParent
+        ? feeService.listInvoices(scope, {}, CAP.invoices)
+        : isAdmin
+          ? feeService.listInvoices(scope, { issuedSince: sinceKey }, CAP.invoices)
+          : [],
       isParent || isAdmin ? feeService.listPayments(scope, undefined, CAP.payments) : [],
       admissionService.listEvents(scope),
       isAdmin ? admissionService.listInquiries(scope) : [],
@@ -294,7 +311,7 @@ export const bootstrapService = {
     return {
       coverage: {
         since: since.toISOString(),
-        windowed: WINDOWED,
+        windowed: isAdmin ? ADMIN_WINDOWED : WINDOWED,
         truncated,
       } satisfies SnapshotCoverage,
       branches,

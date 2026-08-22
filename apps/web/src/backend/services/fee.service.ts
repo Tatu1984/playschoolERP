@@ -37,9 +37,23 @@ const outstandingOf = (inv: { amount: number; lateFee: number; paidAmount: numbe
   inv.amount + inv.lateFee - inv.paidAmount;
 
 export const feeService = {
-  invoiceWhere(scope: Scope, filters: { studentId?: string; status?: string } = {}) {
+  invoiceWhere(
+    scope: Scope,
+    filters: { studentId?: string; status?: string; issuedSince?: string } = {},
+  ) {
     const where: Prisma.InvoiceWhereInput = {};
     if (filters.status) where.status = filters.status as Prisma.InvoiceWhereInput["status"];
+    if (filters.issuedSince) {
+      // "Recent history, plus everything still owed."
+      //
+      // A window on its own would hide an invoice from two years ago that has
+      // never been paid, which is exactly the one an office needs to see. So
+      // the cut is by date OR unsettled, never by date alone.
+      where.OR = [
+        { issuedOn: { gte: new Date(filters.issuedSince) } },
+        { status: { notIn: ["PAID", "CANCELLED"] } },
+      ];
+    }
     if (scope.role === ROLES.PARENT) {
       where.studentId = filters.studentId && scope.studentIds.includes(filters.studentId)
         ? filters.studentId
@@ -53,7 +67,7 @@ export const feeService = {
 
   async listInvoices(
     scope: Scope,
-    filters: { studentId?: string; status?: string } = {},
+    filters: { studentId?: string; status?: string; issuedSince?: string } = {},
     limit?: number,
   ): Promise<Invoice[]> {
     if (scope.role === ROLES.TEACHER) throw new ForbiddenError("Fees are not a teacher's business");

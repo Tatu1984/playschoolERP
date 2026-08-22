@@ -32,6 +32,7 @@ import { ageFrom, dateKey, nowIso } from "@/shared/utils/date.util";
 import { newId } from "@/shared/utils/common.util";
 import { formatDate } from "@/frontend/utils/formatters";
 import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
+import { PhotoConsentRow } from "@/frontend/components/features/admin/PhotoConsentRow";
 
 type Draft = {
   firstName: string;
@@ -569,6 +570,10 @@ export function StudentsManager() {
                 this dialog is exactly where somebody reads them as "since she
                 joined". */}
             <CoverageNote collection="attendance" noun="Attendance and milestones" />
+
+            {/* The office records what a family told them, which is how most
+                consents actually arrive — at the gate, or on a form. */}
+            <PhotoConsentRow studentId={viewing.id} childName={viewing.firstName} />
 
             <div>
               <p className="mb-1.5 text-xs font-bold tracking-wide text-muted-foreground uppercase">Allergies &amp; medical</p>

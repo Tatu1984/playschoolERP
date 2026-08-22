@@ -7,7 +7,7 @@
  * change locally first so the UI never waits on the network, then calls the
  * matching function here; the server's answer is the one that sticks.
  */
-import { del, get, patch, post } from "./client";
+import { del, get, patch, post, put } from "./client";
 import { COLLECTION_ROUTES, type CollectionRoute } from "./collections";
 import type { CollectionKey, ErpData, SnapshotCoverage } from "@/frontend/store/erpStore";
 import type { AttendanceStatus } from "@/shared/types/school.types";
@@ -130,6 +130,33 @@ export const setMeetingStatus = (id: string, status: string) => patch(`/meetings
  * endpoint stands in for the gateway callback, so the demo completes without
  * the client ever being trusted to declare a payment.
  */
+/** What the school has on file about photographing this child. */
+export async function getPhotoConsent(studentId: string) {
+  const { photoConsent } = await get<{ photoConsent: PhotoConsentState }>(
+    `/students/${studentId}/photo-consent`,
+  );
+  return photoConsent;
+}
+
+/** Record an answer. A parent may answer for their own child; so may the office. */
+export async function setPhotoConsent(studentId: string, allowed: boolean, note?: string) {
+  const { photoConsent } = await put<{ photoConsent: PhotoConsentState }>(
+    `/students/${studentId}/photo-consent`,
+    { allowed, ...(note ? { note } : {}) },
+  );
+  return photoConsent;
+}
+
+export interface PhotoConsentState {
+  studentId: string;
+  allowed: boolean;
+  /** False when nobody has ever answered — which counts as a refusal. */
+  recorded: boolean;
+  decidedByName: string;
+  decidedAt: string | null;
+  note: string;
+}
+
 /**
  * Send a photograph to the server and get back the URL the feed should carry.
  *
