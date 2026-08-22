@@ -16,6 +16,7 @@ import type {
 } from "@/shared/types/engagement.types";
 import type {
   AttendanceRecord,
+  AttendanceSummary,
   Classroom,
   Guardian,
   Staff,
@@ -63,14 +64,40 @@ export function attendanceOnDate(attendance: AttendanceRecord[], date: string): 
   return attendance.filter((a) => a.date === date);
 }
 
-export function attendanceRate(attendance: AttendanceRecord[], studentId: string): number {
+/**
+ * The three helpers below take an optional summary, because an admin's portal
+ * no longer carries the rows — it carries the numbers Postgres already counted.
+ * Passing null falls back to counting rows, which is what a parent's and a
+ * teacher's portal does, and what the demo store does.
+ *
+ * Keeping one function per question, rather than two call sites per screen, is
+ * the point: a screen should not have to know which shape its data arrived in.
+ */
+export function attendanceRate(
+  attendance: AttendanceRecord[],
+  studentId: string,
+  summary?: AttendanceSummary | null,
+): number {
+  if (summary) return summary.byStudent[studentId]?.rate ?? 0;
+  return countRate(attendance, studentId);
+}
+
+function countRate(attendance: AttendanceRecord[], studentId: string): number {
   const rows = attendance.filter((a) => a.studentId === studentId && a.status !== "UNMARKED");
   if (!rows.length) return 0;
   const present = rows.filter((a) => a.status === "PRESENT" || a.status === "LATE" || a.status === "HALF_DAY").length;
   return Math.round((present / rows.length) * 100);
 }
 
-export function presentTodayCount(attendance: AttendanceRecord[], classroomId?: string): number {
+export function presentTodayCount(
+  attendance: AttendanceRecord[],
+  classroomId?: string,
+  summary?: AttendanceSummary | null,
+): number {
+  // A summary is school-wide (or branch-wide); asking it about one classroom
+  // would quietly answer a different question, so the rows win when a room is
+  // named. A teacher, who is the one asking per room, still has the rows.
+  if (summary && !classroomId) return summary.today.present;
   const key = dateKey(today());
   return attendance.filter(
     (a) =>
@@ -80,7 +107,14 @@ export function presentTodayCount(attendance: AttendanceRecord[], classroomId?: 
   ).length;
 }
 
-export function weeklyAttendanceSeries(attendance: AttendanceRecord[], studentId?: string): SeriesPoint[] {
+export function weeklyAttendanceSeries(
+  attendance: AttendanceRecord[],
+  studentId?: string,
+  summary?: AttendanceSummary | null,
+): SeriesPoint[] {
+  // Same rule: the summary's week is everyone's week, so a question about one
+  // child is answered from the rows.
+  if (summary && !studentId) return summary.week;
   const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return weekKeys().map((key, i) => {
     const rows = attendance.filter((a) => a.date === key && (!studentId || a.studentId === studentId));

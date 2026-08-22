@@ -139,6 +139,23 @@ export interface AttendanceRecord extends Entity {
   napMinutes: number | null;
 }
 
+/**
+ * Attendance as numbers rather than rows, for the screens that only ever added
+ * them up. See attendance.service.ts — this is what an admin's bootstrap
+ * carries instead of a fortnight of registers.
+ */
+export interface AttendanceSummary {
+  /** Nothing before this date is counted here. */
+  since: string;
+  byStudent: Record<
+    ID,
+    { present: number; absent: number; late: number; marked: number; rate: number }
+  >;
+  today: { present: number; absent: number; late: number; marked: number };
+  /** Percentage present per weekday, Monday first. */
+  week: { label: string; value: number }[];
+}
+
 export type ChildMood = "HAPPY" | "CALM" | "SLEEPY" | "FUSSY" | "UNWELL";
 
 export interface PickupAuthorization extends Entity {

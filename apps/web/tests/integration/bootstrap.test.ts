@@ -114,23 +114,61 @@ async function main() {
     const since = new Date(snap.coverage!.since);
     check("the window is in the past", since.getTime() < Date.now());
 
-    console.log("\nThe window is actually applied");
-    const ids = new Set(snap.attendance.map((a) => a.id));
-    check("a recent attendance record is present", ids.has(recent.id));
-    check("a record from 400 days ago is not", !ids.has(ancient.id));
-
-    // Every row that came back must respect the window, not just the one we
-    // planted — a filter that happens to exclude our record while letting
-    // others through is still broken.
-    const oldest = snap.attendance.reduce<string | null>(
-      (min, a) => (min === null || a.date < min ? a.date : min),
-      null,
+    console.log("\nAn admin gets counts, not registers");
+    // Attendance rows were 1.5MB of an admin's 2.39MB snapshot at four hundred
+    // children, and every admin screen only ever added them up. They now get
+    // the sums Postgres made instead — so the assertion is that the rows are
+    // *absent* and the numbers are right, which is the opposite of what this
+    // test used to insist on.
+    check("no attendance rows are sent to an admin", snap.attendance.length === 0);
+    check("a summary is sent instead", snap.attendanceSummary !== null);
+    check(
+      "and it counts the child we just marked present",
+      (snap.attendanceSummary?.byStudent[student.id]?.marked ?? 0) > 0,
     );
     check(
-      "nothing older than the window came back at all",
-      oldest === null || oldest >= snap.coverage!.since.slice(0, 10),
-      `— oldest was ${oldest}, window starts ${snap.coverage!.since.slice(0, 10)}`,
+      "the summary respects the same window",
+      (snap.attendanceSummary?.since ?? "") >= snap.coverage!.since.slice(0, 10),
+      `— summary from ${snap.attendanceSummary?.since}, window from ${snap.coverage!.since.slice(0, 10)}`,
     );
+
+    console.log("\nThe window is actually applied — for the roles that get rows");
+    // A teacher still receives registers: marking one needs each child's mood,
+    // meals and nap, not a percentage.
+    const teacherStaff = await prisma.staff.findFirst({
+      where: { userId: { not: null }, classrooms: { some: {} } },
+      include: { classrooms: true, user: true },
+    });
+    if (teacherStaff?.user) {
+      const teacherSnap = await bootstrapService.snapshot(
+        await resolveScope({
+          sub: teacherStaff.user.id,
+          role: ROLES.TEACHER,
+          email: teacherStaff.user.email,
+          name: teacherStaff.user.name,
+          branchId: teacherStaff.branchId,
+        }),
+      );
+      check("a teacher still gets rows", teacherSnap.attendance.length > 0);
+      check("and no summary, because they have the rows", teacherSnap.attendanceSummary === null);
+
+      const ids = new Set(teacherSnap.attendance.map((a) => a.id));
+      check("a recent attendance record is present", ids.has(recent.id));
+      check("a record from 400 days ago is not", !ids.has(ancient.id));
+
+      // Every row that came back must respect the window, not just the one we
+      // planted — a filter that happens to exclude our record while letting
+      // others through is still broken.
+      const oldest = teacherSnap.attendance.reduce<string | null>(
+        (min, a) => (min === null || a.date < min ? a.date : min),
+        null,
+      );
+      check(
+        "nothing older than the window came back at all",
+        oldest === null || oldest >= teacherSnap.coverage!.since.slice(0, 10),
+        `— oldest was ${oldest}, window starts ${teacherSnap.coverage!.since.slice(0, 10)}`,
+      );
+    }
 
     if (oldMessage) {
       const messageIds = new Set(snap.messages.map((m) => m.id));

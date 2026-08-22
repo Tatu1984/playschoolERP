@@ -40,6 +40,7 @@ import type {
 } from "@/shared/types/engagement.types";
 import type {
   AttendanceRecord,
+  AttendanceSummary,
   AttendanceStatus,
   Branch,
   Classroom,
@@ -113,6 +114,13 @@ export interface ErpData {
   staff: Staff[];
 
   attendance: AttendanceRecord[];
+  /**
+   * Attendance as numbers, for admins. They receive this *instead of* the rows
+   * — see bootstrap.service.ts — because every admin screen only ever added
+   * them up, and adding them up in the browser cost 1.5MB per portal load at
+   * four hundred children. Null for parents and teachers, who get the rows.
+   */
+  attendanceSummary: AttendanceSummary | null;
   pickupAuthorizations: PickupAuthorization[];
 
   activities: Activity[];

@@ -28,6 +28,8 @@ export function AnalyticsBoard() {
   const analytics = useErpStore((s) => s.analytics);
   const students = useErpStore((s) => s.students);
   const attendance = useErpStore((s) => s.attendance);
+  // Admins receive counts rather than registers — see erpStore.attendanceSummary.
+  const attendanceSummary = useErpStore((s) => s.attendanceSummary);
   const invoices = useErpStore((s) => s.invoices);
   const activities = useErpStore((s) => s.activities);
   const gameSessions = useErpStore((s) => s.gameSessions);
@@ -40,11 +42,11 @@ export function AnalyticsBoard() {
   const outstanding = outstandingOf(scopedInvoices);
 
   const avgAttendance = scopedStudents.length
-    ? Math.round(scopedStudents.reduce((sum, s) => sum + attendanceRate(attendance, s.id), 0) / scopedStudents.length)
+    ? Math.round(scopedStudents.reduce((sum, s) => sum + attendanceRate(attendance, s.id, attendanceSummary), 0) / scopedStudents.length)
     : 0;
 
   const leaderboard = [...scopedStudents]
-    .map((s) => ({ label: studentName(s), value: attendanceRate(attendance, s.id) }))
+    .map((s) => ({ label: studentName(s), value: attendanceRate(attendance, s.id, attendanceSummary) }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
 
@@ -82,7 +84,7 @@ export function AnalyticsBoard() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Avg attendance" value={`${avgAttendance}%`} accent="green" delta={2} sub="last 21 days" />
-        <KpiCard label="Present today" value={presentTodayCount(attendance)} accent="blue" sub={`of ${scopedStudents.length}`} />
+        <KpiCard label="Present today" value={presentTodayCount(attendance, undefined, attendanceSummary)} accent="blue" sub={`of ${scopedStudents.length}`} />
         <KpiCard label="Collected" value={formatMoney(collected)} accent="navy" delta={6} icon={<TrendingUp className="h-4 w-4" />} />
         <KpiCard label="Outstanding" value={formatMoney(outstanding)} accent="brand" delta={-3} />
       </div>
@@ -102,7 +104,7 @@ export function AnalyticsBoard() {
         <TabsContent value="attendance" className="pt-4">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <SectionCard title="This week" description="Percentage present, per weekday">
-              <BarChart data={weeklyAttendanceSeries(attendance)} suffix="%" color="#8BC53F" height={200} />
+              <BarChart data={weeklyAttendanceSeries(attendance, undefined, attendanceSummary)} suffix="%" color="#8BC53F" height={200} />
             </SectionCard>
             <SectionCard title="Best attendance" description="Top 6 children">
               <SkillBars data={leaderboard} color="#2BAEEC" />

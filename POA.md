@@ -36,7 +36,7 @@ broken at all**.
 | Backend testing | 80% | 111 integration assertions against real Postgres. |
 | Frontend/E2E testing | 60% | 11 browser journeys in CI, plus the reducer suites. |
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
-| Scale | 75% | Windows measured, not guessed. Client-store architecture unchanged. |
+| Scale | 85% | Measured windows; admins read aggregates, not registers. |
 | Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
 | Compliance & DR | 45% | Retention job runs; consent captured. No backup drill, no DPIA. |
 | Mobile app | 0% | Referenced in scripts and docs; does not exist. |
@@ -64,7 +64,7 @@ Verified by tests that fail against the previous code, not by inspection:
 - Emergency broadcasts wrote a row and reached nobody.
 - There was no way to upload a photograph at all, and no consent to publish one.
 
-452 assertions plus 22 browser checks: 213 unit, 239 integration, 11 journeys, 11 accessibility.
+464 assertions plus 22 browser checks: 213 unit, 251 integration, 11 journeys, 11 accessibility.
 
 ---
 
@@ -424,16 +424,32 @@ right.
 server cannot quietly stop naming the windowed collections and take every label
 down with it.
 
-### 4.2 Per-screen fetching
+### 4.2 Per-screen fetching — **first slice done, 2026-08-22**
 
-45 components read the single client store. That was the right call while the
-backend was being built, and it is the ceiling now: every portal load pulls a
-term of everything whether the screen needs it or not.
+The load test said where to aim: attendance rows were 1.5MB of an admin's
+2.39MB snapshot, and they grew with every school day. Every admin screen that
+read them only ever added them up — an average, a per-child rate, a weekly
+series, a count of who is in today.
 
-Migrate the heaviest screens (attendance, feed, messages) to the per-resource
-endpoints — which already exist, already take filters, and are already scoped.
-Keep the store for genuinely global reference data. This is incremental; it does
-not need a rewrite.
+So admins no longer receive the rows. `attendanceService.summary()` does the
+counting in Postgres (three `groupBy` queries, a few kilobytes back) and the
+three admin screens read that. Parents and teachers still get rows and should:
+a parent's window is one child, and a teacher marking the register needs each
+child's mood, meals and nap, not a percentage.
+
+**Admin snapshot: 7.95MB → 2.39MB → 0.96MB.** Twenty seconds on 3G at the
+school gate, down to two and a half.
+
+Six integration assertions check the summary against counting the rows by hand,
+per child and for today, because an aggregate that quietly disagrees with the
+records it summarises is the worst kind of wrong: every screen looks fine and
+every number is off. The scoping is asserted too — one branch's summary counts
+different children from the other's.
+
+**Still open, and this is the rest of §4.2:** invoices are now the largest
+collection in an admin's payload (578KB, and it also only ever gets summed);
+messages and the feed are still fetched whole. The pattern is established and
+measured — `npm run load:measure` is how the next slice should be judged.
 
 ### 4.3 Load testing ✅ **done, 2026-08-22**
 
@@ -529,7 +545,7 @@ needs the media plane in the loop, which is a different kind of test.
 | ~~10~~ | ~~Surface `coverage`~~ | done | ✅ |
 | ~~11~~ | ~~Load testing, then tune windows~~ | done | ✅ |
 | ~~12~~ | ~~Playwright E2E~~ | done | ✅ |
-| 13 | Per-screen fetching | 5–10 d | No |
+| 13 | Per-screen fetching — the rest | 4–8 d | No (attendance slice ✅) |
 | 14 | Penetration test | external | Yes, before CCTV goes live |
 | 15 | Accessibility audit — human half | 2 d | No (automated half ✅) |
 | 16 | Mobile app — build or delete references | — | No |

@@ -54,6 +54,7 @@ export function AdminOverview({ cctv }: { cctv: CctvSnapshot }) {
   const staff = useErpStore((s) => s.staff);
   const guardians = useErpStore((s) => s.guardians);
   const attendance = useErpStore((s) => s.attendance);
+  const attendanceSummary = useErpStore((s) => s.attendanceSummary);
   const invoices = useErpStore((s) => s.invoices);
   const inquiries = useErpStore((s) => s.inquiries);
   const applications = useErpStore((s) => s.applications);
@@ -66,7 +67,7 @@ export function AdminOverview({ cctv }: { cctv: CctvSnapshot }) {
   const scopedInvoices = inScope(invoices);
   const todayKey = dateKey(today());
   const markedToday = attendanceOnDate(attendance, todayKey).filter((a) => a.status !== "UNMARKED").length;
-  const present = presentTodayCount(attendance);
+  const present = presentTodayCount(attendance, undefined, attendanceSummary);
   const newLeads = inquiries.filter((i) => i.stage === "NEW").length;
 
   return (
@@ -131,7 +132,7 @@ export function AdminOverview({ cctv }: { cctv: CctvSnapshot }) {
               </Button>
             }
           >
-            <BarChart data={weeklyAttendanceSeries(attendance)} suffix="%" color="#8BC53F" height={170} />
+            <BarChart data={weeklyAttendanceSeries(attendance, undefined, attendanceSummary)} suffix="%" color="#8BC53F" height={170} />
           </SectionCard>
 
           <div className="grid gap-4 md:grid-cols-2">

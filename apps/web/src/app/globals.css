@@ -105,7 +105,13 @@
   --muted-foreground: #6B5B3E;
   --accent: #F39A1E;
   --accent-foreground: #ffffff;
-  --destructive: oklch(0.577 0.245 27.325);
+  /*
+   * Darkened from oklch(0.577 …). The soft destructive badge puts this colour
+   * on a 10% tint of itself, where the brighter red measured 4:1 against AA's
+   * 4.5:1 — and a badge that says something is wrong is exactly the one a
+   * reader must not have to squint at. White on the solid variant improves too.
+   */
+  --destructive: oklch(0.505 0.213 27.325);
   --border: rgba(26, 31, 75, 0.12);
   --input: rgba(26, 31, 75, 0.18);
   --ring: #DC2638;

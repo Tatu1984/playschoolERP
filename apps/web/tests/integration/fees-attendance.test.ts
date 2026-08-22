@@ -264,6 +264,62 @@ async function main() {
     });
   }
 
+  // --- The summary must agree with the rows ---------------------------------
+  // Admins no longer receive attendance rows; they receive counts Postgres
+  // made. An aggregate that quietly disagrees with the records it summarises is
+  // the worst kind of wrong — every screen looks fine and every number is off.
+  console.log("\nThe attendance summary agrees with the register");
+
+  const branchOfClass = student.branchId;
+  const summaryScope = scopeOf({ role: ROLES.ADMIN, branchId: branchOfClass, userId: "summary-test" });
+  const summary = await attendanceService.summary(summaryScope, 120);
+  const rows = await attendanceService.list(summaryScope, { from: summary.since }, 50_000);
+
+  const marked = rows.filter((r) => r.status !== "UNMARKED");
+  const countedRate = (studentId: string) => {
+    const mine = marked.filter((r) => r.studentId === studentId);
+    if (!mine.length) return 0;
+    const present = mine.filter((r) => ["PRESENT", "LATE", "HALF_DAY"].includes(r.status)).length;
+    return Math.round((present / mine.length) * 100);
+  };
+
+  const studentIds = [...new Set(marked.map((r) => r.studentId))].slice(0, 10);
+  check("precondition: the seeded register has children in it", studentIds.length > 0);
+  const disagreements = studentIds.filter(
+    (id) => (summary.byStudent[id]?.rate ?? 0) !== countedRate(id),
+  );
+  check(
+    "every child's rate matches counting the rows by hand",
+    disagreements.length === 0,
+    `— ${disagreements.length} disagreed, first ${disagreements[0]}`,
+  );
+
+  const todayKeyValue = new Date().toISOString().slice(0, 10);
+  const presentToday = rows.filter(
+    (r) => r.date === todayKeyValue && ["PRESENT", "LATE", "HALF_DAY"].includes(r.status),
+  ).length;
+  check(
+    "today's present count matches",
+    summary.today.present === presentToday,
+    `— summary ${summary.today.present}, rows ${presentToday}`,
+  );
+  check("the week has a point per weekday", summary.week.length === 7);
+  check(
+    "and every point is a percentage",
+    summary.week.every((p) => p.value >= 0 && p.value <= 100),
+  );
+
+  // The scoping rule that matters: a summary is built from the same
+  // `scopedWhere` the row query uses, so one branch's numbers never include the
+  // other's.
+  const otherBranch = await prisma.branch.findFirst({ where: { id: { not: branchOfClass } } });
+  if (otherBranch) {
+    const otherScope = scopeOf({ role: ROLES.ADMIN, branchId: otherBranch.id, userId: "summary-test-2" });
+    const otherSummary = await attendanceService.summary(otherScope, 120);
+    const overlap = Object.keys(otherSummary.byStudent).filter((id) => id in summary.byStudent);
+    check("the other branch's summary counts different children", overlap.length === 0);
+  }
+
   console.log(`\n${pass} passed, ${fail} failed\n`);
   await prisma.$disconnect();
   process.exit(fail === 0 ? 0 : 1);

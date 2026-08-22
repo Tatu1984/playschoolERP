@@ -42,7 +42,24 @@ server-side in 3ms, and by the per-resource endpoints, which take filters. A
 parent's window stays at 120 days because a parent's window is one child, and
 one child is 60KB.
 
-## Where an admin's 2.39MB still goes
+## After the attendance slice (same run, 2026-08-22)
+
+Admins stopped receiving attendance rows at all; they receive counts computed
+by Postgres (`attendanceService.summary`). **0.96MB, complete.** Down from 7.95.
+
+| Collection | Rows | KB |
+|---|---|---|
+| invoices | 1,600 | 578 |
+| messages | 400 | 114 |
+| students | 200 | 96 |
+| conversations | 200 | 73 |
+| guardians | 200 | 61 |
+
+Invoices are now the biggest thing an admin downloads, and they too are only
+ever summed. That is where the next slice of §4.2 should go, and this is how to
+judge it.
+
+## Where an admin's 2.39MB went before that
 
 | Collection | Rows | KB |
 |---|---|---|

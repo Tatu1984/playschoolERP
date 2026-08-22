@@ -75,6 +75,7 @@ export function StudentsManager() {
   const guardians = useErpStore((s) => s.guardians);
   const classrooms = useErpStore((s) => s.classrooms);
   const attendance = useErpStore((s) => s.attendance);
+  const attendanceSummary = useErpStore((s) => s.attendanceSummary);
   const milestones = useErpStore((s) => s.milestones);
   const invoices = useErpStore((s) => s.invoices);
   const addItem = useErpStore((s) => s.addItem);
@@ -277,9 +278,9 @@ export function StudentsManager() {
       key: "attendance",
       header: "Attendance",
       hideOnMobile: true,
-      sortValue: (s) => attendanceRate(attendance, s.id),
+      sortValue: (s) => attendanceRate(attendance, s.id, attendanceSummary),
       cell: (s) => {
-        const rate = attendanceRate(attendance, s.id);
+        const rate = attendanceRate(attendance, s.id, attendanceSummary);
         return (
           <span className={rate >= 90 ? "text-emerald-700" : rate >= 75 ? "text-amber-700" : "text-ck-red"}>
             {rate}%
@@ -560,7 +561,7 @@ export function StudentsManager() {
               <InfoItem label="Blood group" value={viewing.bloodGroup} />
               <InfoItem
                 label="Attendance"
-                value={`${attendanceRate(attendance, viewing.id)}%`}
+                value={`${attendanceRate(attendance, viewing.id, attendanceSummary)}%`}
               />
               <InfoItem label="Milestones" value={milestonesOf(milestones, viewing.id).length} />
             </div>

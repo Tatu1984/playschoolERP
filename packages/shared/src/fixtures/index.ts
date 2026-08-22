@@ -79,6 +79,10 @@ export function buildDemoData() {
     staff: STAFF,
 
     attendance: ATTENDANCE,
+    // The demo store has the rows, so it needs no summary — the screens fall
+    // back to counting them, which is what a parent's and a teacher's portal
+    // does for real too.
+    attendanceSummary: null,
     pickupAuthorizations: [],
 
     activities: ACTIVITIES,

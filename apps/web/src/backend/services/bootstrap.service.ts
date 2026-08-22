@@ -169,7 +169,7 @@ export const bootstrapService = {
       schoolService.listStudents(scope),
       schoolService.listGuardians(scope),
       isStaff ? schoolService.listStaff(scope) : [],
-      attendanceService.list(scope, { from: sinceKey }, CAP.attendance),
+      isAdmin ? [] : attendanceService.list(scope, { from: sinceKey }, CAP.attendance),
       attendanceService.listPickupAuths(scope),
       feedService.list(scope),
       feedService.listNotices(scope),
@@ -283,6 +283,14 @@ export const bootstrapService = {
       logger.warn("Bootstrap snapshot hit a cap", { truncated, role: scope.role, windowDays });
     }
 
+    // Only admins get it, because only admins lost the rows. Computed after
+    // the main fan-out rather than inside it: it is three cheap groupBy
+    // queries, and adding a fourth branch to that Promise.all would make the
+    // list harder to read than the saving is worth.
+    const attendanceSummary = isAdmin
+      ? await attendanceService.summary(scope, windowDays)
+      : null;
+
     return {
       coverage: {
         since: since.toISOString(),
@@ -295,6 +303,7 @@ export const bootstrapService = {
       guardians,
       staff,
       attendance,
+      attendanceSummary,
       pickupAuthorizations,
       activities,
       notices,

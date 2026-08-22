@@ -9,7 +9,7 @@
  *  * A pickup code is single-use and only valid on the day it was issued.
  *    Someone at the gate with yesterday's code is turned away.
  */
-import { type Prisma } from "@/backend/database/client";
+import { prisma, type Prisma } from "@/backend/database/client";
 import { attendanceRepository } from "@/backend/repositories/attendance.repository";
 import { toAttendance, toPickupAuthorization } from "@/backend/mappers";
 import { AppError, ForbiddenError, NotFoundError } from "@/backend/utils/error-handler.util";
@@ -19,6 +19,7 @@ import { ROLES, type Role } from "@/shared/constants/roles";
 import type {
   AttendanceRecord,
   AttendanceStatus,
+  AttendanceSummary,
   PickupAuthorization,
 } from "@/shared/types/school.types";
 
@@ -37,6 +38,81 @@ export interface DayLogPatch {
 }
 
 export const attendanceService = {
+  /**
+   * The register as numbers rather than as rows.
+   *
+   * Admin screens ask three questions of attendance — how full is the school
+   * today, how is each child doing, and what does the week look like — and all
+   * three are aggregates. Sending them the rows to add up themselves cost 1.5MB
+   * of a 2.39MB bootstrap at four hundred children, measured
+   * (docs/ops/load-test.md), and it grew with every school day.
+   *
+   * Postgres counts far better than a browser does. Three groupBy queries, a
+   * few kilobytes back.
+   *
+   * Parents and teachers still get rows, and should: a parent's window is one
+   * child, and a teacher marking the register needs each child's mood, meals
+   * and nap, not a percentage.
+   */
+  async summary(
+    scope: Scope,
+    windowDays = 120,
+  ): Promise<AttendanceSummary> {
+    const since = dayKey(new Date(Date.now() - windowDays * 86_400_000));
+    const where = { ...this.scopedWhere(scope, { from: since }) };
+
+    const [perStudent, todayRows, weekRows] = await Promise.all([
+      prisma.attendanceRecord.groupBy({
+        by: ["studentId", "status"],
+        where,
+        _count: { _all: true },
+      }),
+      prisma.attendanceRecord.groupBy({
+        by: ["status"],
+        where: { ...this.scopedWhere(scope, {}), date: todayKey() },
+        _count: { _all: true },
+      }),
+      prisma.attendanceRecord.groupBy({
+        by: ["date", "status"],
+        where: { ...this.scopedWhere(scope, { from: weekStartKey() }) },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const byStudent: AttendanceSummary["byStudent"] = {};
+    for (const row of perStudent) {
+      const entry = (byStudent[row.studentId] ??= { present: 0, absent: 0, late: 0, marked: 0, rate: 0 });
+      const count = row._count._all;
+      if (row.status === "UNMARKED") continue;
+      entry.marked += count;
+      if (row.status === "ABSENT") entry.absent += count;
+      else if (row.status === "LATE") entry.late += count;
+      if (row.status === "PRESENT" || row.status === "LATE" || row.status === "HALF_DAY") {
+        entry.present += count;
+      }
+    }
+    for (const entry of Object.values(byStudent)) {
+      entry.rate = entry.marked ? Math.round((entry.present / entry.marked) * 100) : 0;
+    }
+
+    const countOf = (rows: { status: string; _count: { _all: number } }[], statuses: string[]) =>
+      rows.filter((r) => statuses.includes(r.status)).reduce((sum, r) => sum + r._count._all, 0);
+
+    const week = groupWeek(weekRows);
+
+    return {
+      since,
+      byStudent,
+      today: {
+        present: countOf(todayRows, ["PRESENT", "LATE", "HALF_DAY"]),
+        absent: countOf(todayRows, ["ABSENT"]),
+        late: countOf(todayRows, ["LATE"]),
+        marked: todayRows.reduce((s, r) => (r.status === "UNMARKED" ? s : s + r._count._all), 0),
+      },
+      week,
+    };
+  },
+
   scopedWhere(
     scope: Scope,
     filters: { studentId?: string; classroomId?: string; date?: string; from?: string; to?: string },
@@ -216,3 +292,35 @@ export const attendanceService = {
     return toPickupAuthorization(row);
   },
 };
+
+/** "YYYY-MM-DD" for a Date, in the same shape the rows are stored in. */
+function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Monday of the current week, which is what the weekly chart draws. */
+function weekStartKey(): string {
+  const now = new Date();
+  const monday = new Date(now);
+  // getUTCDay: 0 is Sunday, and a school week starts on Monday.
+  const offset = (now.getUTCDay() + 6) % 7;
+  monday.setUTCDate(now.getUTCDate() - offset);
+  return dayKey(monday);
+}
+
+/** Percentage present per weekday, Monday first, from grouped counts. */
+function groupWeek(
+  rows: { date: string; status: string; _count: { _all: number } }[],
+): { label: string; value: number }[] {
+  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const start = new Date(`${weekStartKey()}T00:00:00.000Z`);
+  return labels.map((label, i) => {
+    const key = dayKey(new Date(start.getTime() + i * 86_400_000));
+    const forDay = rows.filter((r) => r.date === key && r.status !== "UNMARKED");
+    const marked = forDay.reduce((s, r) => s + r._count._all, 0);
+    const present = forDay
+      .filter((r) => ["PRESENT", "LATE", "HALF_DAY"].includes(r.status))
+      .reduce((s, r) => s + r._count._all, 0);
+    return { label, value: marked ? Math.round((present / marked) * 100) : 0 };
+  });
+}
