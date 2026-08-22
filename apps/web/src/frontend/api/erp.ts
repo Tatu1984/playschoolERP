@@ -130,6 +130,38 @@ export const setMeetingStatus = (id: string, status: string) => patch(`/meetings
  * endpoint stands in for the gateway callback, so the demo completes without
  * the client ever being trusted to declare a payment.
  */
+/**
+ * Send a photograph to the server and get back the URL the feed should carry.
+ *
+ * Multipart, so it does not go through `api()` — that helper JSON-encodes
+ * everything, which would turn a two-megabyte photograph into a base64 string
+ * and lose the filename. The session cookie still has to ride along.
+ *
+ * The URL that comes back is `/api/media/<id>`, not a blob URL: the bytes live
+ * in a private store and every read goes past a scope check.
+ */
+export async function uploadPhoto(
+  file: File,
+  classroomId?: string,
+): Promise<{ id: string; url: string; contentType: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  if (classroomId) form.append("classroomId", classroomId);
+
+  const res = await fetch("/api/media", {
+    method: "POST",
+    credentials: "same-origin",
+    body: form,
+  });
+
+  const text = await res.text();
+  const payload = text ? (JSON.parse(text) as { media?: { id: string; url: string; contentType: string }; error?: string }) : undefined;
+  if (!res.ok || !payload?.media) {
+    throw new Error(payload?.error ?? `Upload failed (${res.status})`);
+  }
+  return payload.media;
+}
+
 export async function payInvoice(invoiceId: string, amount: number, method: Payment["method"]) {
   if (method === "CASH" || method === "CHEQUE") {
     return post("/fees/payments", { invoiceId, amount, method });

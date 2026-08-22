@@ -35,6 +35,7 @@ import { newId, titleCase } from "@/shared/utils/common.util";
 import { nowIso } from "@/shared/utils/date.util";
 import { timeAgo } from "@/frontend/utils/formatters";
 import { cn } from "@/lib/utils";
+import { uploadPhoto } from "@/frontend/api/erp";
 
 const KINDS: ActivityKind[] = ["LEARNING", "PLAY", "MEAL", "NAP", "ART", "MUSIC", "OUTDOOR", "CELEBRATION"];
 
@@ -76,6 +77,7 @@ export function ActivityUploader() {
   const feed = classroom ? feedForClassrooms(activities, [classroom.id]) : [];
 
   const [composeOpen, setComposeOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
   const [viewing, setViewing] = useState<Activity | null>(null);
   const [deleting, setDeleting] = useState<Activity | null>(null);
@@ -124,17 +126,48 @@ export function ActivityUploader() {
     setComposeOpen(true);
   }
 
-  function attach(files: FileList | null) {
-    if (!files) return;
-    const added: MediaRef[] = Array.from(files).map((f) => ({
-      id: newId("m"),
-      url: "",
-      kind: f.type.startsWith("video") ? "video" : "image",
-      caption: f.name.replace(/\.[^.]+$/, ""),
-      placeholder: f.type.startsWith("video") ? "🎬" : "🖼️",
-    }));
-    setDraft((d) => ({ ...d, media: [...d.media, ...added] }));
-    toast.success(`${added.length} file${added.length > 1 ? "s" : ""} attached`);
+  /**
+   * Send the photographs to the server.
+   *
+   * This used to read each file's *name and size*, build a MediaRef with an
+   * empty `url`, and tell the teacher "3 files attached". Nothing was ever
+   * uploaded — the bytes were dropped on the floor and the post went out with
+   * captions pointing at nothing. A photo feed that says it has the photo and
+   * does not is worse than one that admits it cannot take them.
+   *
+   * Now each file goes to POST /api/media, which strips its EXIF (a nursery
+   * photograph carries the child's GPS position), stores it privately, and
+   * returns the only URL that will ever read it back. A file that will not
+   * upload is reported and is *not* attached.
+   */
+  async function attach(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const attached: MediaRef[] = [];
+    const failures: string[] = [];
+
+    for (const file of Array.from(files)) {
+      try {
+        const media = await uploadPhoto(file, classroom?.id);
+        attached.push({
+          id: media.id,
+          url: media.url,
+          kind: media.contentType.startsWith("video") ? "video" : "image",
+          caption: file.name.replace(/\.[^.]+$/, ""),
+        });
+      } catch (e) {
+        failures.push(e instanceof Error ? e.message : file.name);
+      }
+    }
+
+    setUploading(false);
+    if (attached.length) {
+      setDraft((d) => ({ ...d, media: [...d.media, ...attached] }));
+      toast.success(`${attached.length} photo${attached.length > 1 ? "s" : ""} uploaded`);
+    }
+    // Named individually: "2 failed" leaves the teacher guessing which two are
+    // missing from a post they are about to send to thirty families.
+    for (const failure of failures.slice(0, 3)) toast.error(failure);
   }
 
   function save(): boolean {
@@ -315,7 +348,7 @@ export function ActivityUploader() {
           accept="image/*,video/*"
           hidden
           onChange={(e) => {
-            attach(e.target.files);
+            void attach(e.target.files);
             e.target.value = "";
           }}
         />
@@ -342,8 +375,14 @@ export function ActivityUploader() {
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Photos &amp; video</p>
-            <Button type="button" size="xs" variant="outline" onClick={() => fileRef.current?.click()}>
-              <ImagePlus /> Attach
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+            >
+              <ImagePlus /> {uploading ? "Uploading…" : "Attach"}
             </Button>
           </div>
           {draft.media.length === 0 ? (

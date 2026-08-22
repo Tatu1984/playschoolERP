@@ -265,10 +265,25 @@ playschool ERP did not exist.
 coordinates), 39 integration assertions on upload, scope, consent and tokens.
 Three go red against code without the strip and the consent gate.
 
-**Still open:** video — there is no upload path for it, and MP4 metadata
-stripping is a different problem from EXIF. No UI: this is the endpoint and the
-rules, and no screen uploads through them yet. `MediaAsset` (the CMS table)
-still holds plain URLs and is untouched.
+**The UI is wired (2026-08-22).** The teacher's activity composer used to read
+each file's *name and size*, build a reference with an empty `url`, and say
+"3 files attached" — nothing was ever uploaded, and the post went out with
+captions pointing at nothing. It now uploads through `POST /api/media` and
+attaches only what actually stored; a file that fails is named, not counted.
+Asserted by `tests/e2e/photo-upload.spec.ts`, which hands the composer a JPEG
+carrying GPS coordinates and checks the stored object is smaller and scrubbed.
+
+**Still open:**
+
+- **Video.** No upload path, and MP4 metadata is a different problem from EXIF.
+- **The admin media library** catalogues the *marketing* site's assets, which
+  need public URLs — so the ERP's private path is the wrong home for them and
+  they are still URL metadata. It no longer claims to upload: it says it makes
+  the entry and the URL is pasted in. Joining it to the GMS gallery's public
+  blob path is the real fix.
+- **No admin composer for safety broadcasts.** `/api/emergency/broadcasts`
+  exists, is tested, and delivers; there is no screen for a head teacher to send
+  one from. Today it takes an API call.
 
 ### 2.4 Decide the mobile app
 

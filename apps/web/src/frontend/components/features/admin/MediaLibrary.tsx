@@ -42,6 +42,18 @@ export function MediaLibrary() {
 
   const shown = filter === "all" ? assets : assets.filter((a) => a.category === filter);
 
+  /**
+   * Registers an asset record. It does **not** upload the file.
+   *
+   * This library catalogues the marketing website's media, and those need
+   * public URLs — which is what the GMS gallery (`lib/gms/gallery.ts`) stores.
+   * The ERP's own upload path deliberately stores privately, because it holds
+   * photographs of children, so it is the wrong home for a banner.
+   *
+   * Until the two are joined up, the honest thing is to say what this does: it
+   * makes the entry, and the URL is pasted in afterwards. It used to say
+   * "Drop files here to upload" and quietly keep the filename.
+   */
   function ingest(files: FileList | null) {
     if (!files || files.length === 0) return;
     Array.from(files).forEach((file) => {
@@ -64,7 +76,7 @@ export function MediaLibrary() {
         createdAt: nowIso(),
       });
     });
-    toast.success(`${files.length} file${files.length > 1 ? "s" : ""} added to the library`);
+    toast.success(`${files.length} entr${files.length > 1 ? "ies" : "y"} added — paste the URL to finish`);
   }
 
   return (
@@ -81,7 +93,7 @@ export function MediaLibrary() {
               </Link>
             </Button>
             <Button onClick={() => inputRef.current?.click()}>
-              <Upload /> Upload
+              <Upload /> Add entry
             </Button>
           </>
         }
@@ -127,9 +139,9 @@ export function MediaLibrary() {
           dragOver ? "border-ck-red bg-ck-red/5" : "border-border",
         )}
       >
-        <p className="text-sm font-medium">Drop files here to upload</p>
+        <p className="text-sm font-medium">Drop files here to catalogue them</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Images, video, audio and PDFs · or{" "}
+          Creates the entry — paste the public URL in afterwards. Images, video, audio and PDFs · or{" "}
           <button type="button" className="font-semibold text-ck-red hover:underline" onClick={() => inputRef.current?.click()}>
             browse
           </button>
@@ -156,7 +168,7 @@ export function MediaLibrary() {
       </div>
 
       {shown.length === 0 ? (
-        <EmptyState emoji="🖼️" title="Nothing here" description="Upload a file or pick another category." />
+        <EmptyState emoji="🖼️" title="Nothing here" description="Add an entry or pick another category." />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {shown.map((asset) => (
