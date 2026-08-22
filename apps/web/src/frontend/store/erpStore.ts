@@ -99,6 +99,8 @@ import { dateKey, nowIso, today } from "@/shared/utils/date.util";
 export interface SnapshotCoverage {
   /** Nothing older than this is present in the windowed collections. */
   since: string;
+  /** Which collections `since` applies to. The server decides, not the screen. */
+  windowed: string[];
   /** Collections that also hit a row cap, so are the newest N rather than all. */
   truncated: string[];
 }

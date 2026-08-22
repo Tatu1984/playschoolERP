@@ -42,6 +42,7 @@ import { CATALOGUE } from "@/shared/fixtures";
 import { formatMoney } from "@/shared/utils/common.util";
 import { clockNow, dateKey, today, withinWindow } from "@/shared/utils/date.util";
 import { formatDateTime, formatTime, relativeDays, timeAgo } from "@/frontend/utils/formatters";
+import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
 
 const MOOD_EMOJI: Record<string, string> = {
   HAPPY: "😄",
@@ -148,6 +149,8 @@ export function ParentDashboard() {
               <p className="text-[10px] tracking-wide text-muted-foreground uppercase">Milestones</p>
             </div>
           </div>
+          {/* The attendance figure above is for the loaded window, not the year. */}
+          <CoverageNote collection="attendance" noun="Attendance" className="mt-3 justify-center" />
         </div>
       </div>
 

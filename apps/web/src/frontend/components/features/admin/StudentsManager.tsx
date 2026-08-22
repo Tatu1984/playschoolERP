@@ -31,6 +31,7 @@ import type { Student } from "@/shared/types/school.types";
 import { ageFrom, dateKey, nowIso } from "@/shared/utils/date.util";
 import { newId } from "@/shared/utils/common.util";
 import { formatDate } from "@/frontend/utils/formatters";
+import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
 
 type Draft = {
   firstName: string;
@@ -557,9 +558,16 @@ export function StudentsManager() {
               <InfoItem label="Branch" value={branches.find((b) => b.id === viewing.branchId)?.name ?? "—"} />
               <InfoItem label="Date of birth" value={formatDate(viewing.dob)} />
               <InfoItem label="Blood group" value={viewing.bloodGroup} />
-              <InfoItem label="Attendance" value={`${attendanceRate(attendance, viewing.id)}%`} />
+              <InfoItem
+                label="Attendance"
+                value={`${attendanceRate(attendance, viewing.id)}%`}
+              />
               <InfoItem label="Milestones" value={milestonesOf(milestones, viewing.id).length} />
             </div>
+            {/* Attendance and milestones here are within the loaded window, and
+                this dialog is exactly where somebody reads them as "since she
+                joined". */}
+            <CoverageNote collection="attendance" noun="Attendance and milestones" />
 
             <div>
               <p className="mb-1.5 text-xs font-bold tracking-wide text-muted-foreground uppercase">Allergies &amp; medical</p>

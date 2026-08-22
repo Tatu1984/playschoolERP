@@ -21,6 +21,7 @@ import { addDays, dateKey, today } from "@/shared/utils/date.util";
 import { newId } from "@/shared/utils/common.util";
 import { formatDate, formatTime } from "@/frontend/utils/formatters";
 import { cn } from "@/lib/utils";
+import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
 
 const MOOD_EMOJI: Record<string, string> = {
   HAPPY: "😄",
@@ -82,6 +83,9 @@ export function AttendanceView() {
         <KpiCard label="Absences" value={absent} accent={absent ? "brand" : "muted"} />
         <KpiCard label="Late arrivals" value={late} accent={late ? "orange" : "muted"} />
       </div>
+      {/* Days present, absences and lateness are counts within the window the
+          portal loaded — not since the child joined the school. */}
+      <CoverageNote collection="attendance" noun="These counts" />
 
       {/* today */}
       <SectionCard title="Today" description={formatDate(today())}>

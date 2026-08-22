@@ -15,6 +15,7 @@ import { RowActions } from "@/frontend/components/ui/RowActions";
 import { formatDuration, formatTime, timeAgo } from "@/frontend/utils/formatters";
 import { initials } from "@/shared/utils/common.util";
 import { cn } from "@/lib/utils";
+import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
 
 /**
  * Two-pane messaging used by both the teacher panel and the parent portal.
@@ -231,6 +232,10 @@ export function ConversationPanel({
             </div>
 
             <div className="flex-1 space-y-2.5 overflow-y-auto bg-muted/20 p-3">
+              {/* A thread that starts mid-conversation looks like a thread that
+                  started there. It did not — the portal loads recent messages
+                  only, and older ones are still in the office system. */}
+              <CoverageNote collection="messages" noun="This thread" className="justify-center pb-1" />
               {thread.map((m) => {
                 const own = m.senderRole === senderRole;
                 return (

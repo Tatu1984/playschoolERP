@@ -95,6 +95,22 @@ async function main() {
     console.log("\nCoverage is reported, not left to be guessed at");
     check("the snapshot says how far back it reaches", typeof snap.coverage?.since === "string");
     check("and which collections were capped", Array.isArray(snap.coverage?.truncated));
+    // The screens read this to decide whether to say "these totals cover the
+    // last N days". If the server ever stops naming the windowed collections,
+    // the labels quietly disappear and every total reads as all-time again.
+    check(
+      "and which collections the window applies to",
+      Array.isArray(snap.coverage?.windowed) && snap.coverage!.windowed.length > 0,
+    );
+    check(
+      "attendance is named as windowed, because it is",
+      snap.coverage!.windowed.includes("attendance"),
+    );
+    check("so are messages", snap.coverage!.windowed.includes("messages"));
+    check(
+      "invoices are not — they are capped, not windowed",
+      !snap.coverage!.windowed.includes("invoices"),
+    );
     const since = new Date(snap.coverage!.since);
     check("the window is in the past", since.getTime() < Date.now());
 

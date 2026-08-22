@@ -64,7 +64,7 @@ Verified by tests that fail against the previous code, not by inspection:
 - Emergency broadcasts wrote a row and reached nobody.
 - There was no way to upload a photograph at all, and no consent to publish one.
 
-412 assertions total: 198 unit, 214 integration.
+431 assertions total: 213 unit, 218 integration.
 
 ---
 
@@ -356,15 +356,31 @@ which is correct and should be a known, rehearsed consequence.
 
 ## 5. Phase 4 — Scale and honesty in the UI (est. 1–2 weeks)
 
-### 4.1 Surface `coverage`
+### 4.1 Surface `coverage` ✅ **done, 2026-08-22**
 
-The bootstrap now returns how far back it reached
-(`SnapshotCoverage` on the store's meta state). No screen says so. Anything
-showing a total — "absent 4 times", "₹12,000 collected" — is showing it *within
-a 120-day window* and presenting it as all-time.
+The bootstrap knew how far back it had reached and no screen said so, which
+made every total on the portal a total *within a 120-day window* presented as
+all-time. "Absent 4 times" meant four times since May. That is a correctness
+problem wearing a UI costume: nobody files a bug against a number that looks
+right.
 
-Either label the windowed views or fetch the full range for the few screens that
-genuinely need it. This is a correctness problem wearing a UI costume.
+- `SnapshotCoverage` now carries `windowed` — **which** collections the `since`
+  applies to — alongside `since` and `truncated`. The server says it rather than
+  each screen assuming: attendance and messages are windowed, invoices and
+  payments are capped but complete.
+- `useCoverage(collection)` answers the question, and `<CoverageNote>` says it
+  in a sentence: "These counts cover the last 120 days, from 24 April. The
+  office system holds the full history." It renders nothing when the collection
+  is neither windowed nor capped — including the demo fixtures, where the data
+  really is everything there is.
+- Placed where a total is read as all-time: the parent attendance KPIs and the
+  dashboard percentage, message threads (a thread starting mid-conversation
+  looks like a thread that started there), the admin analytics attendance
+  figures, and the student detail dialog.
+
+15 unit assertions on the decision, four more in the bootstrap suite so the
+server cannot quietly stop naming the windowed collections and take every label
+down with it.
 
 ### 4.2 Per-screen fetching
 
@@ -420,7 +436,7 @@ paying an invoice.
 | 7 | Privacy/DPIA/consent | legal-led | Yes |
 | ~~8~~ | ~~Error tracking + alerting~~ | done | ✅ (rules to be created) |
 | ~~9~~ | ~~Photo storage with signed URLs~~ | done | ✅ (no UI, no video) |
-| 10 | Surface `coverage` | 2 d | No, but it is currently misleading |
+| ~~10~~ | ~~Surface `coverage`~~ | done | ✅ |
 | 11 | Load testing, then tune windows | 3 d | No |
 | 12 | Playwright E2E | 4 d | No |
 | 13 | Per-screen fetching | 5–10 d | No |

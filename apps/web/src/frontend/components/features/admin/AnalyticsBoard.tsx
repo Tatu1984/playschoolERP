@@ -21,6 +21,7 @@ import { BarChart, DonutChart, LineChart, RadialStat, SkillBars } from "@/fronte
 import { SectionCard } from "@/frontend/components/ui/Bits";
 import { SelectField } from "@/frontend/components/ui/Field";
 import { formatCompact, formatMoney } from "@/shared/utils/common.util";
+import { CoverageNote } from "@/frontend/components/ui/CoverageNote";
 
 export function AnalyticsBoard() {
   const { inScope } = useBranchScope();
@@ -85,6 +86,9 @@ export function AnalyticsBoard() {
         <KpiCard label="Collected" value={formatMoney(collected)} accent="navy" delta={6} icon={<TrendingUp className="h-4 w-4" />} />
         <KpiCard label="Outstanding" value={formatMoney(outstanding)} accent="brand" delta={-3} />
       </div>
+      {/* Average attendance is computed from the attendance the portal loaded,
+          which is a window. The money figures are not windowed. */}
+      <CoverageNote collection="attendance" noun="Attendance figures" />
 
       <Tabs defaultValue="attendance">
         <TabsList>

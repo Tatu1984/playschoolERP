@@ -23,7 +23,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger && npm run check:headers && npm run check:notification-policy && npm run check:error-reporting && npm run check:image-metadata",
+    "test": "npm run check:flows && npm run check:overlays && npm run check:payments && npm run check:logger && npm run check:headers && npm run check:notification-policy && npm run check:error-reporting && npm run check:image-metadata && npm run check:coverage-note",
     "test:integration": "npm run check:scoping && npm run check:auth-guards && npm run check:health && npm run check:bootstrap && npm run check:cctv && npm run check:fees-attendance && npm run check:password-reset && npm run check:notifications && npm run check:media",
     "check:headers": "tsx tests/unit/security-headers.test.ts",
     "check:password-reset": "tsx tests/integration/password-reset.test.ts",
@@ -32,7 +32,8 @@
     "build:vercel": "prisma migrate deploy && prisma generate && next build",
     "check:error-reporting": "tsx tests/unit/error-reporting.test.ts",
     "check:media": "tsx tests/integration/media.test.ts",
-    "check:image-metadata": "tsx tests/unit/image-metadata.test.ts"
+    "check:image-metadata": "tsx tests/unit/image-metadata.test.ts",
+    "check:coverage-note": "tsx tests/unit/coverage.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

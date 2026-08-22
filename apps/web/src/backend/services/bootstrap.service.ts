@@ -66,9 +66,21 @@ const CAP = {
 export interface SnapshotCoverage {
   /** Time-bounded collections contain nothing older than this. */
   since: string;
+  /**
+   * Which collections `since` actually applies to. The rest are capped but not
+   * windowed, so they are complete unless they appear in `truncated`.
+   *
+   * Sent rather than assumed: a screen deciding for itself which collections
+   * are windowed is a screen that will still say so after somebody here changes
+   * their mind, and will say it about the wrong ones.
+   */
+  windowed: string[];
   /** Collections that hit their cap, and so are the newest N rather than all. */
   truncated: string[];
 }
+
+/** The collections the `since` filter above is applied to. */
+const WINDOWED = ["attendance", "messages"];
 
 const EMPTY_ANALYTICS = {
   attendanceTrend: [],
@@ -247,7 +259,11 @@ export const bootstrapService = {
     }
 
     return {
-      coverage: { since: since.toISOString(), truncated } satisfies SnapshotCoverage,
+      coverage: {
+        since: since.toISOString(),
+        windowed: WINDOWED,
+        truncated,
+      } satisfies SnapshotCoverage,
       branches,
       classrooms,
       students,
