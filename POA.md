@@ -2,26 +2,35 @@
 
 **From where this is today to something that can hold a real school's data.**
 
-Last updated: 2026-08-21 (Phase 1 complete). Every claim below was checked
-against the codebase on that date; file paths are given so each one can be
-re-verified rather than taken on trust.
+Last updated: 2026-08-22. Every claim below was checked against the codebase on
+that date; file paths are given so each one can be re-verified rather than taken
+on trust. Sections marked ✅ are done and say what they left behind — including
+what they did *not* finish.
 
 ---
 
 ## 1. Where this actually stands
 
-**Overall: ~70% ready.** (Phase 1 is done — §2 records what was closed.) Deployable to a pilot — one branch, staff who know
-they are early, no marketing push. Not ready for a full school's records, and
-not ready for parents who will depend on it.
+**Overall: ~85% ready — on the engineering.** Everything in the plan that could
+be built from this repository has been. What remains before a real school's
+records go in needs other people: a lawyer (§3.3), someone with the Neon console
+(§3.1), an external penetration tester (§5), and someone with Vercel access to
+set four environment variables.
+
+The honest summary is that the product is now *capable* and not yet
+*accountable*: it can hold a school's data safely, and nobody has yet decided
+how long it may keep it, or proved that it can be restored when something goes
+wrong.
 
 The architecture is genuinely good and is not the problem. Routes stay thin,
 rules live in services, `Scope` resolves "who may see what" in one place, and
 the mappers keep the database shape out of the API. Nothing below asks for that
 to be rebuilt.
 
-What is missing splits three ways: **hardening that is nearly done**, **features
-that were designed and never built**, and **operational ground that has not been
-broken at all**.
+What is left splits two ways now: **decisions that need someone other than an
+engineer**, and **work that is real but does not block a launch** — the rest of
+per-screen fetching, video upload, the human half of the accessibility audit,
+and the mobile app.
 
 ### Scorecard
 
@@ -33,13 +42,13 @@ broken at all**.
 | Data integrity & migrations | 95% | Migrations clean, drift-checked in CI. |
 | Dependencies | 95% | Zero high-severity in runtime deps; CI fails on a new one. |
 | Transport & headers | 75% | Enforced frame-ancestors/HSTS/nosniff. Full CSP still report-only. |
-| Backend testing | 80% | 111 integration assertions against real Postgres. |
+| Backend testing | 90% | 251 integration assertions against real Postgres. |
 | Frontend/E2E testing | 60% | 11 browser journeys in CI, plus the reducer suites. |
 | Observability | 85% | Tracker wired, alert conditions documented. Rules not created. |
 | Scale | 85% | Measured windows; admins read aggregates, not registers. |
-| Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No UI yet. |
+| Core feature completeness | 80% | Notifications deliver; photos upload, scrub and scope. No upload UI, no video. |
 | Compliance & DR | 45% | Retention job runs; consent captured. No backup drill, no DPIA. |
-| Mobile app | 0% | Referenced in scripts and docs; does not exist. |
+| Mobile app | 0% | Does not exist; the phantom references are gone and what it will need is built. |
 
 ### What is already closed
 
@@ -548,12 +557,21 @@ needs the media plane in the loop, which is a different kind of test.
 | 13 | Per-screen fetching — the rest | 4–8 d | No (attendance slice ✅) |
 | 14 | Penetration test | external | Yes, before CCTV goes live |
 | 15 | Accessibility audit — human half | 2 d | No (automated half ✅) |
-| 16 | Mobile app — build or delete references | — | No |
+| ~~16~~ | ~~Mobile app — decide~~ | done | ✅ (references deleted; not built) |
 
-Roughly **4–6 weeks of engineering** from the original starting point, of
-which Phase 1 is now spent, to a defensible launch for one school,
-excluding legal review and the external pen test, both of which should start
-early because they run on someone else's calendar.
+Twelve of the sixteen are done. **What is left before a real school's records
+go in is not engineering:**
+
+| Blocking | Who it needs |
+|---|---|
+| Restore drill (§3.1) | Someone with the Neon console. An afternoon. |
+| DPIA, retention policy, controller, breach procedure (§3.3) | A lawyer. `docs/ops/data-inventory.md` is the brief. |
+| Penetration test, CCTV plane included (§5) | An external tester. Runs on their calendar — book it now. |
+| Four environment variables in Vercel | `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`, `CRON_SECRET`. Without them, reset and the nightly prune refuse — honestly, but they refuse. |
+
+Non-blocking engineering that remains: the rest of per-screen fetching (§4.2),
+video upload and an upload UI (§2.3), an SMS provider (§2.2), the human half of
+the accessibility audit (§5), and a mobile app if one is wanted.
 
 ---
 
